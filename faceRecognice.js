@@ -22,13 +22,14 @@ export async function addNewFaceToPull() {
       <head>
         <title>Face Added Successfully</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+          body { font-family: Arial, sans-serif; padding: 20px; background: transparent; }
           .container { background: white; padding: 30px; border-radius: 10px; max-width: 600px; margin: 0 auto; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
           img { max-width: 100%; margin-top: 20px; border: 3px solid #4CAF50; border-radius: 8px; }
-          .info { background: #e8f5e9; padding: 15px; border-radius: 5px; margin: 10px 0; }
+          .info { background: #ffffff9d; padding: 15px; border-radius: 5px; margin: 10px 0; }
           h1 { color: #2e7d32; margin-bottom: 20px; }
           .data-item { margin: 10px 0; font-size: 16px; }
           .label { font-weight: bold; color: #1b5e20; }
+          .span { color: #333; }
         </style>
       </head>
       <body>
@@ -37,13 +38,13 @@ export async function addNewFaceToPull() {
           
           <div class="info">
             <div class="data-item">
-              <span class="label">👤 Name:</span> ${decodeURIComponent(name)}
+              <span class="label">👤 Name:</span> <span class="span">${decodeURIComponent(name)}</span>
             </div>
             <div class="data-item">
-              <span class="label">🆔 Image ID:</span> ${response.image_id}
+              <span class="label">🆔 Image ID:</span> <span class="span">${response.image_id}</span>
             </div>
             <div class="data-item">
-              <span class="label">📊 Subject:</span> ${response.subject}
+              <span class="label">📊 Subject:</span> <span class="span">${response.subject}</span>
             </div>
           </div>
           
