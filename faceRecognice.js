@@ -8,7 +8,58 @@ let recognitionService = compreFace.initFaceRecognitionService(process.env.COMPR
 
 // Initialize or get reference to a gallery
 
-export async function addNewFaceToPull() {
+// Función para agregar una cara desde imagen base64 capturada del frontend
+export async function addCapturedFace(base64Image, name) {
+  let faceCollection = recognitionService.getFaceCollection();
+  let encodedName = encodeURIComponent(name);
+  let tempPath = null; // Declarar fuera del try para acceso en catch
+  
+  try {
+    // Convertir base64 a buffer
+    const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
+    const imageBuffer = Buffer.from(base64Data, 'base64');
+    
+    // Guardar temporalmente la imagen
+    tempPath = `./temp_${Date.now()}.jpg`;
+    fs.writeFileSync(tempPath, imageBuffer);
+    
+    // Agregar la cara a la colección usando el path del archivo
+    const response = await faceCollection.add(tempPath, encodedName);
+    console.log("Face added from capture:", response);
+    
+    // Eliminar el archivo temporal
+    // fs.unlinkSync(tempPath);
+    
+    return {
+      success: true,
+      name: decodeURIComponent(encodedName),
+      image_id: response.image_id,
+      subject: response.subject,
+      image: base64Image
+    };
+  } catch (error) {
+    console.error('Error adding captured face:', error);
+    
+    // Limpiar archivo temporal si existe
+    if (tempPath) {
+      try {
+        if (fs.existsSync(tempPath)) {
+          // fs.unlinkSync(tempPath);
+        }
+      } catch (cleanupError) {
+        console.error('Error cleaning up temp file:', cleanupError);
+      }
+    }
+    
+    // Mensaje de error más específico
+    if (error.response?.status === 400) {
+      throw new Error('No se detectó un rostro en la imagen. Asegúrate de que tu cara esté bien iluminada y visible.');
+    }
+    throw error;
+  }
+}
+
+export async function addNewFaceToPullManualy() {
   let faceCollection = recognitionService.getFaceCollection();
   let name = encodeURIComponent('Sebastian');
   
