@@ -1,6 +1,14 @@
 # FaceApp · Reconocimiento facial asistido por CompreFace
 
 <img src="src/face-scan.jpg" alt="Hero de la aplicación" width="100%" style="max-height: 220px; object-fit: cover; border-radius: 16px;" />
+
+![Node.js](https://img.shields.io/badge/⚙️%20Node.js-18%2B-339933?logo=node.js&logoColor=white)
+![Express](https://img.shields.io/badge/🧭%20Express.js-000000?logo=express&logoColor=white)
+![React](https://img.shields.io/badge/⚛️%20React-61DAFB?logo=react&logoColor=222)
+![Vite](https://img.shields.io/badge/⚡%20Vite-646CFF?logo=vite&logoColor=white)
+![TypeScript](https://img.shields.io/badge/📘%20TypeScript-3178C6?logo=typescript&logoColor=white)
+![Docker](https://img.shields.io/badge/🐳%20Docker-2496ED?logo=docker&logoColor=white)
+![CompreFace](https://img.shields.io/badge/🧠%20CompreFace-FF6F61)
 <!-- ![Dashboard de resultados](image/faceapp-results.png) -->
 ---
 
@@ -23,10 +31,10 @@
 
 | Componente | Descripción |
 |------------|-------------|
-| Backend Node.js | expone `/capture` y `/recognize` contra CompreFace |
-| CompreFace | orquestado vía Docker desde [CompreFaceDok](CompreFaceDok) |
-| Frontend Vite + React + TS | interfaz WebCam en [FrontEnd/faceApp](FrontEnd/faceApp) |
-| Almacenamiento temporal | imágenes intermedias en `TempImage/` e `image/` |
+| ⚙️ Backend Node.js ![Node.js](https://img.shields.io/badge/-Node.js-339933?logo=node.js&logoColor=white&labelColor=222) | expone `/capture` y `/recognize` contra CompreFace |
+| 🧠 CompreFace ![CompreFace](https://img.shields.io/badge/-CompreFace-FF6F61) | orquestado vía 🐳 Docker desde [CompreFaceDok](CompreFaceDok) |
+| ⚛️ Frontend Vite + React + TS ![React](https://img.shields.io/badge/-React-61DAFB?logo=react&logoColor=222&labelColor=222) ![Vite](https://img.shields.io/badge/-Vite-646CFF?logo=vite&logoColor=white&labelColor=222) ![TS](https://img.shields.io/badge/-TypeScript-3178C6?logo=typescript&logoColor=white&labelColor=222) | interfaz WebCam en [FrontEnd/faceApp](FrontEnd/faceApp) |
+| 💾 Almacenamiento temporal | imágenes intermedias en `TempImage/` e `image/` |
 
 ---
 
@@ -48,27 +56,26 @@ flowchart LR
 
 ## Requisitos previos
 
-- Node.js ≥ 18
-- npm o pnpm
-- Docker + Docker Compose (para CompreFace)
-- Cámara local o virtual habilitada en el navegador
-- Variables `.env` configuradas tanto en la raíz como en `FrontEnd/faceApp/` y `CompreFaceDok/`
+- ⚙️ Node.js ≥ 18 y 📦 npm/pnpm
+- 🐳 Docker + Docker Compose (para 🧠 CompreFace)
+- 📷 Cámara local o virtual habilitada en el navegador
+- 🔐 Variables `.env` configuradas tanto en la raíz como en `FrontEnd/faceApp/` y `CompreFaceDok/`
 
 ---
 
 ## Configuración rápida
 
-1. **Backend**
+1. **⚙️ Backend Node.js** ![Node.js](https://img.shields.io/badge/-Node.js-339933?logo=node.js&logoColor=white&labelColor=222)
    ```sh
    npm install
    npm run dev
    ```
-2. **CompreFace**
+2. **🧠 CompreFace sobre 🐳 Docker** ![Docker](https://img.shields.io/badge/-Docker-2496ED?logo=docker&logoColor=white&labelColor=222)
    ```sh
    cd CompreFaceDok
    docker compose up -d
    ```
-3. **Frontend**
+3. **⚛️ Frontend Vite + React + TS** ![Vite](https://img.shields.io/badge/-Vite-646CFF?logo=vite&logoColor=white&labelColor=222) ![React](https://img.shields.io/badge/-React-61DAFB?logo=react&logoColor=222&labelColor=222) ![TS](https://img.shields.io/badge/-TS-3178C6?logo=typescript&logoColor=white&labelColor=222)
    ```sh
    cd FrontEnd/faceApp
    npm install
@@ -82,24 +89,24 @@ flowchart LR
 
 | Archivo | Clave | Significado |
 |---------|-------|-------------|
-| `.env` | `PORT`, `COMPREFACE_URL`, `COMPREFACE_KEY` | Backend / proxy hacia CompreFace |
-| `FrontEnd/faceApp/.env` | `VITE_API_URL` | URL pública del backend |
-| `CompreFaceDok/.env` | Credenciales y llaves internas | Servicio CompreFace |
+| `.env` | `PORT`, `COMPREFACE_URL`, `COMPREFACE_KEY` | ⚙️ Backend / proxy hacia 🧠 CompreFace |
+| `FrontEnd/faceApp/.env` | `VITE_API_URL` | URL pública del ⚛️ frontend |
+| `CompreFaceDok/.env` | Credenciales y llaves internas | Servicio 🧠 CompreFace |
 
 ---
 
 ## Scripts habituales
 
-### Raíz (backend)
+### ⚙️ Raíz (backend Node.js)
 - `npm run dev` · modo desarrollo con recarga.
 - `npm run start` · ejecución productiva.
 
-### Frontend Vite
-- `npm run dev` · servidor local de Vite.
+### ⚛️ Frontend Vite + React
+- `npm run dev` · servidor local de ⚡ Vite.
 - `npm run build` · bundle listo para deploy.
 - `npm run preview` · verificación del build.
 
-### CompreFace
+### 🧠 CompreFace sobre 🐳 Docker
 - `docker compose up -d` · levanta los contenedores.
 - `docker compose logs -f` · seguimiento de inferencias.
 
