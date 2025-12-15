@@ -31,9 +31,9 @@
 
 | Componente | Descripción |
 |------------|-------------|
-| ⚙️ Backend Node.js ![Node.js](https://img.shields.io/badge/-Node.js-339933?logo=node.js&logoColor=white&labelColor=222) | expone `/capture` y `/recognize` contra CompreFace |
+| ⚙️ Backend ![Node.js](https://img.shields.io/badge/-Node.js-339933?logo=node.js&logoColor=white&labelColor=222) | expone `/capture` y `/recognize` contra CompreFace |
 | 🧠 CompreFace ![CompreFace](https://img.shields.io/badge/-CompreFace-FF6F61) | orquestado vía 🐳 Docker desde [CompreFaceDok](CompreFaceDok) |
-| ⚛️ Frontend Vite + React + TS ![React](https://img.shields.io/badge/-React-61DAFB?logo=react&logoColor=222&labelColor=222) ![Vite](https://img.shields.io/badge/-Vite-646CFF?logo=vite&logoColor=white&labelColor=222) ![TS](https://img.shields.io/badge/-TypeScript-3178C6?logo=typescript&logoColor=white&labelColor=222) | interfaz WebCam en [FrontEnd/faceApp](FrontEnd/faceApp) |
+| ⚛️ Frontend ![React](https://img.shields.io/badge/%20React-61DAFB?logo=react&logoColor=222) ![Vite](https://img.shields.io/badge/-Vite-646CFF?logo=vite&logoColor=white&labelColor=222) ![TS](https://img.shields.io/badge/-TypeScript-3178C6?logo=typescript&logoColor=white&labelColor=222) | interfaz WebCam en [FrontEnd/faceApp](FrontEnd/faceApp) |
 | 💾 Almacenamiento temporal | imágenes intermedias en `TempImage/` e `image/` |
 
 ---
@@ -65,17 +65,17 @@ flowchart LR
 
 ## Configuración rápida
 
-1. **⚙️ Backend Node.js** ![Node.js](https://img.shields.io/badge/-Node.js-339933?logo=node.js&logoColor=white&labelColor=222)
+1. **⚙️ Backend ** ![Node.js](https://img.shields.io/badge/-Node.js-339933?logo=node.js&logoColor=white&labelColor=222)
    ```sh
    npm install
    npm run dev
    ```
-2. **🧠 CompreFace sobre 🐳 Docker** ![Docker](https://img.shields.io/badge/-Docker-2496ED?logo=docker&logoColor=white&labelColor=222)
+2. **🧠 CompreFace sobre Docker** ![Docker](https://img.shields.io/badge/-Docker-2496ED?logo=docker&logoColor=white&labelColor=222)
    ```sh
    cd CompreFaceDok
    docker compose up -d
    ```
-3. **⚛️ Frontend Vite + React + TS** ![Vite](https://img.shields.io/badge/-Vite-646CFF?logo=vite&logoColor=white&labelColor=222) ![React](https://img.shields.io/badge/-React-61DAFB?logo=react&logoColor=222&labelColor=222) ![TS](https://img.shields.io/badge/-TS-3178C6?logo=typescript&logoColor=white&labelColor=222)
+3. **⚛️ Frontend Vite + React + TS** ![Vite](https://img.shields.io/badge/-Vite-646CFF?logo=vite&logoColor=white&labelColor=222) ![React](https://img.shields.io/badge/%20React-61DAFB?logo=react&logoColor=222) ![TS](https://img.shields.io/badge/-TS-3178C6?logo=typescript&logoColor=white&labelColor=222)
    ```sh
    cd FrontEnd/faceApp
    npm install
