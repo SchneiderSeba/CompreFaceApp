@@ -2,12 +2,12 @@
 
 <img src="src/face-scan.jpg" alt="Hero de la aplicación" width="100%" style="max-height: 220px; object-fit: cover; border-radius: 16px;" />
 
-![Node.js](https://img.shields.io/badge/⚙️%20Node.js-18%2B-339933?logo=node.js&logoColor=white)
-![Express](https://img.shields.io/badge/🧭%20Express.js-000000?logo=express&logoColor=white)
-![React](https://img.shields.io/badge/⚛️%20React-61DAFB?logo=react&logoColor=222)
-![Vite](https://img.shields.io/badge/⚡%20Vite-646CFF?logo=vite&logoColor=white)
-![TypeScript](https://img.shields.io/badge/📘%20TypeScript-3178C6?logo=typescript&logoColor=white)
-![Docker](https://img.shields.io/badge/🐳%20Docker-2496ED?logo=docker&logoColor=white)
+![Node.js](https://img.shields.io/badge/%20Node.js-18%2B-339933?logo=node.js&logoColor=white)
+![Express](https://img.shields.io/badge/%20Express.js-000000?logo=express&logoColor=white)
+![React](https://img.shields.io/badge/%20React-61DAFB?logo=react&logoColor=222)
+![Vite](https://img.shields.io/badge/%20Vite-646CFF?logo=vite&logoColor=white)
+![TypeScript](https://img.shields.io/badge/%20TypeScript-3178C6?logo=typescript&logoColor=white)
+![Docker](https://img.shields.io/badge/%20Docker-2496ED?logo=docker&logoColor=white)
 ![CompreFace](https://img.shields.io/badge/🧠%20CompreFace-FF6F61)
 <!-- ![Dashboard de resultados](image/faceapp-results.png) -->
 ---
