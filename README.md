@@ -2,9 +2,6 @@
 
 <img src="src/face-scan.jpg" alt="Hero de la aplicación" width="100%" style="max-height: 220px; object-fit: cover; border-radius: 16px;" />
 <!-- ![Dashboard de resultados](image/faceapp-results.png) -->
-
-<video src="src/5818973-uhd_3840_2160_24fps.mp4" controls width="100%" poster="image/faceapp-video-cover.png"></video>
-
 ---
 
 ## Tabla de contenidos
