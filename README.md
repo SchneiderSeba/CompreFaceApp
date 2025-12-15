@@ -1,9 +1,9 @@
 # FaceApp · Reconocimiento facial asistido por CompreFace
 
-![Hero de la aplicación](image/faceapp-hero.png)
-![Dashboard de resultados](image/faceapp-results.png)
+<img src="src/face-scan.jpg" alt="Hero de la aplicación" width="100%" style="max-height: 220px; object-fit: cover; border-radius: 16px;" />
+<!-- ![Dashboard de resultados](image/faceapp-results.png) -->
 
-<video src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" controls width="100%" poster="image/faceapp-video-cover.png"></video>
+<video src="src/5818973-uhd_3840_2160_24fps.mp4" controls width="100%" poster="image/faceapp-video-cover.png"></video>
 
 ---
 
@@ -123,7 +123,7 @@ En el frontend puedes alternar entre modos **New** y **Recognize** mediante el s
 
 ## Frontend
 
-- Basado en Vite + React + TS; estilos locales en `src/components/WebCapture.css`.
+- Basado en Vite + React + TS; estilos locales por componente `src/components/TodosLosComponentes.css`.
 - `react-webcam` captura imágenes a 1280×720, espejo activado.
 - Manejo de estados para resultados positivos, vacíos y errores.
 - UI responsiva con botón único que cambia de comportamiento según el modo seleccionado.
@@ -150,9 +150,3 @@ En el frontend puedes alternar entre modos **New** y **Recognize** mediante el s
 - [ ] Notificaciones push cuando se detecte un rostro conocido.
 - [ ] Optimización WebGL para filtros previos a la captura.
 - [ ] Tests e2e para la UI de cámara.
-
----
-
-## Licencia
-
-Proyecto distribuido bajo los términos especificados en tu organización. Ajusta este bloque si decides usar MIT, Apache-2.0, etc.
