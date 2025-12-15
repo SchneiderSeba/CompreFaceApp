@@ -84,7 +84,7 @@ const handeCaptureRecognize = async (screenshot: string) => {
                         className="capture-button"
                         disabled={loading}
                     >
-                        {loading ? '⏳ Processing...' : '📸 Capture Photo'}
+                        {loading ? '⏳ Processing...' : '📸 Capture Pic'}
                     </button>
                     {screenShotSrc && (
                         <div className="screenshot-container">

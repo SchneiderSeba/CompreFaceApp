@@ -68,7 +68,7 @@ export async function recognizFace(base64Image) {
 
     const response = await recognitionService.recognize(tempPath, {
       limit: 1,
-      det_prob_threshold: 0.8
+      det_prob_threshold: 0.98
     });
 
     fs.unlinkSync(tempPath);
