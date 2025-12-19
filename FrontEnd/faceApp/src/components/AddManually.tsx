@@ -15,11 +15,11 @@ export const AddManually = () => {
         try {
           const response = await axios.get<FaceItem[]>(API_URL);
           console.log("From Server : ",response);
-          setData(response.data);
+          setData(response.data[0] || null);
           console.log("Data set in state : ",response.data);
         } catch (error) {
           console.error('Error fetching data:', error);
-          setData('Error loading data');
+          setData(null);
         } finally {
           setLoading(false);
         }
