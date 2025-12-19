@@ -10,4 +10,10 @@ export default defineConfig({
       },
     }),
   ],
+  server: {
+    allowedHosts: ['comprefacefront-production.up.railway.app'],
+  },
+  preview: {
+    allowedHosts: ['comprefacefront-production.up.railway.app'],
+  },
 })
