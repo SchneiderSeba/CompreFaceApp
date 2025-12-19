@@ -1,11 +1,19 @@
 import WebCam from "react-webcam";
 import './WebCapture.css';
-import { useState } from "react";
+import { useState, type JSX } from "react";
 import axios from "axios";
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://comprefaceapp-production.up.railway.app';
 
-export const WebCapture = () => {
+interface ChildrenProps {
+  getScreenshot: () => string | null
+}
+interface Props {
+  children: (props: ChildrenProps) => JSX.Element
+}
+
+
+export const WebCapture: React.FC<Props> = () => {
 
 const [screenShotSrc, setScreenshotSrc] = useState<string | null>(null);
 const [loading, setLoading] = useState(false);
