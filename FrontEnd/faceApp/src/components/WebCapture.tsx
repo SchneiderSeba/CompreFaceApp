@@ -3,7 +3,7 @@ import './WebCapture.css';
 import { useState } from "react";
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL || 'https://comprefaceapp-production.up.railway.app';
 
 export const WebCapture = () => {
 

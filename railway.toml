@@ -1,0 +1,14 @@
+[build]
+builder = "RAILPACK"
+
+[[services]]
+name = "backend"
+root = "."
+buildCommand = "npm install"
+startCommand = "npm start"
+
+[[services]]
+name = "frontend"
+root = "FrontEnd/faceApp"
+buildCommand = "npm install && npm run build"
+startCommand = "npm run preview -- --host 0.0.0.0"
