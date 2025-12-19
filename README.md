@@ -28,9 +28,9 @@
 
 ## Pruebalo Aqui ✈️
 
-([Sistema de Reconomcimiento Facial](https://comprefacefront-production.up.railway.app/))
+[Sistema de Reconocimiento Facial](https://comprefacefront-production.up.railway.app/)
 
-Primero Ingrese una Foto en modo New y Luego reconozca su Cara en modo Recognize
+Primero ingrese una foto en modo New y luego reconozca su cara en modo Recognize
 
 ---
 
