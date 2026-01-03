@@ -65,6 +65,8 @@ export const WebCapture: React.FC = () => {
         }
     };
 
+    console.log('API KEY:', process.env.COMPRE_FACE_API_KEY);
+
     return (
         <div className="webcam-container"> 
             <WebCam 

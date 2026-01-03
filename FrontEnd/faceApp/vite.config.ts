@@ -11,9 +11,9 @@ export default defineConfig({
     }),
   ],
   server: {
-    allowedHosts: ['comprefacefront-production.up.railway.app'],
+    allowedHosts: ['all'],
   },
   preview: {
-    allowedHosts: ['comprefacefront-production.up.railway.app'],
+    allowedHosts: ['all'],
   },
 })
