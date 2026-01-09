@@ -3,7 +3,7 @@ import './WebCapture.css';
 import { useState, useRef, useCallback } from "react";
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://comprefaceapp-production.up.railway.app';
+const API_URL = import.meta.env.VITE_API_URL || 'comprefaceapp-production-a8a0.up.railway.app';
 
 export const WebCapture: React.FC = () => {
     const webcamRef = useRef<WebCam>(null);
