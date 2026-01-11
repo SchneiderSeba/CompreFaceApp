@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { compreFace } from './clientCompreFace.js';
 import { addNewFaceToPullManualy } from './faceRecognice.js';
 
 dotenv.config();
@@ -57,6 +56,10 @@ app.post('/recognize', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+import { cleanTempFolder } from './cleanTempImg.js';
+
+// Ejecutar la limpieza de la carpeta TempImage al iniciar el servidor
+cleanTempFolder();
 
 app.listen(PORT, () => {
   console.log(`✅ Server is running on http://localhost:${PORT}`);

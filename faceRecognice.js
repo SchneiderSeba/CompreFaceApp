@@ -1,8 +1,6 @@
 import { compreFace } from "./clientCompreFace.js";
 import fs from "fs";
 import dotenv from "dotenv";
-import path from "path";
-import os from "os";
  
 dotenv.config();
 
@@ -65,11 +63,13 @@ export async function recognizFace(base64Image) {
     const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
     const imageBuffer = Buffer.from(base64Data, 'base64');
 
+    if (!fs.existsSync("./TempImage")) {
+    fs.mkdirSync("./TempImage");
+    }
+
     tempPath = `./TempImage/temp_rec_${Date.now()}.jpg`;
     fs.writeFileSync(tempPath, imageBuffer);
 
-    // const tempPath = path.join(os.tmpdir(), `face_${Date.now()}.jpg`);
-    // fs.writeFileSync(tempPath, imageBuffer);
 
     const response = await recognitionService.recognize(tempPath, {
       limit: 1,
