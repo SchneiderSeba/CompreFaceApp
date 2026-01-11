@@ -3,7 +3,7 @@ import axios from 'axios';
 import './AddManually.css';
 import type { FaceItem } from '../types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL || "https://comprefaceapp-production-a8a0.up.railway.app";
 
 export const AddManually = () => {
 
