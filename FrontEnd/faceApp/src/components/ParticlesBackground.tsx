@@ -5,20 +5,38 @@ import './ParticlesBackground.css';
 
 const defaultColors = ['#ffffff', '#ffffff', '#ffffff'];
 
-const hexToRgb = hex => {
-  hex = hex.replace(/^#/, '');
-  if (hex.length === 3) {
-    hex = hex
+const hexToRgb = (hexValue: string): [number, number, number] => {
+  let normalizedHex = hexValue.replace(/^#/, '');
+  if (normalizedHex.length === 3) {
+    normalizedHex = normalizedHex
       .split('')
       .map(c => c + c)
       .join('');
   }
-  const int = parseInt(hex, 16);
+  const int = parseInt(normalizedHex, 16);
   const r = ((int >> 16) & 255) / 255;
   const g = ((int >> 8) & 255) / 255;
   const b = (int & 255) / 255;
   return [r, g, b];
 };
+
+type Nullable<T> = T | null;
+
+interface ParticlesBackgroundProps {
+  particleCount?: number;
+  particleSpread?: number;
+  speed?: number;
+  particleColors?: string[];
+  moveParticlesOnHover?: boolean;
+  particleHoverFactor?: number;
+  alphaParticles?: boolean;
+  particleBaseSize?: number;
+  sizeRandomness?: number;
+  cameraDistance?: number;
+  disableRotation?: boolean;
+  pixelRatio?: number;
+  className?: string;
+}
 
 const vertex = /* glsl */ `
   attribute vec3 position;
@@ -98,9 +116,9 @@ const ParticlesBackground = ({
   cameraDistance = 20,
   disableRotation = false,
   pixelRatio = 1,
-  className
-}) => {
-  const containerRef = useRef(null);
+  className = ''
+}: ParticlesBackgroundProps) => {
+  const containerRef = useRef<Nullable<HTMLDivElement>>(null);
   const mouseRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -128,7 +146,7 @@ const ParticlesBackground = ({
     window.addEventListener('resize', resize, false);
     resize();
 
-    const handleMouseMove = e => {
+    const handleMouseMove = (e: MouseEvent) => {
       const rect = container.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       const y = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
@@ -143,7 +161,7 @@ const ParticlesBackground = ({
     const positions = new Float32Array(count * 3);
     const randoms = new Float32Array(count * 4);
     const colors = new Float32Array(count * 3);
-    const palette = particleColors && particleColors.length > 0 ? particleColors : defaultColors;
+    const palette = particleColors?.length ? particleColors : defaultColors;
 
     for (let i = 0; i < count; i++) {
       let x, y, z, len;
@@ -182,11 +200,11 @@ const ParticlesBackground = ({
 
     const particles = new Mesh(gl, { mode: gl.POINTS, geometry, program });
 
-    let animationFrameId;
+    let animationFrameId: number;
     let lastTime = performance.now();
     let elapsed = 0;
 
-    const update = t => {
+    const update = (t: number) => {
       animationFrameId = requestAnimationFrame(update);
       const delta = t - lastTime;
       lastTime = t;
@@ -223,7 +241,6 @@ const ParticlesBackground = ({
         container.removeChild(gl.canvas);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     particleCount,
     particleSpread,
@@ -235,7 +252,8 @@ const ParticlesBackground = ({
     sizeRandomness,
     cameraDistance,
     disableRotation,
-    pixelRatio
+    pixelRatio,
+    particleColors
   ]);
 
   return <div ref={containerRef} className={`particles-container ${className}`} />;

@@ -1,99 +1,116 @@
-import { useEffect, useState, useRef } from 'react';
-import './CountUp.css';
+import { useInView, useMotionValue, useSpring } from 'motion/react';
+import { useCallback, useEffect, useRef } from 'react';
+
+type CountDirection = 'up' | 'down';
 
 interface CountUpProps {
   to: number;
   from?: number;
-  duration?: number;
+  direction?: CountDirection;
   delay?: number;
+  duration?: number;
   className?: string;
-  separator?: string;
-  decimals?: number;
-  suffix?: string;
-  prefix?: string;
   startWhen?: boolean;
+  separator?: string;
   onStart?: () => void;
   onEnd?: () => void;
 }
 
-export const CountUp: React.FC<CountUpProps> = ({
+export default function CountUp({
   to,
   from = 0,
-  duration = 2,
+  direction = 'up',
   delay = 0,
+  duration = 2,
   className = '',
-  separator = '',
-  decimals = 0,
-  suffix = '',
-  prefix = '',
   startWhen = true,
+  separator = '',
   onStart,
   onEnd
-}) => {
-  const [count, setCount] = useState(from);
-  const animationRef = useRef<number>();
-  const isAnimatingRef = useRef(false);
+}: CountUpProps) {
+  const ref = useRef<HTMLSpanElement | null>(null);
+  const motionValue = useMotionValue<number>(direction === 'down' ? to : from);
 
-  useEffect(() => {
-    if (!startWhen || isAnimatingRef.current) return;
+  const damping = 20 + 40 * (1 / duration);
+  const stiffness = 100 * (1 / duration);
 
-    const startAnimation = () => {
-      if (onStart) onStart();
-      isAnimatingRef.current = true;
+  const springValue = useSpring(motionValue, {
+    damping,
+    stiffness
+  });
 
-      const startTime = performance.now();
-      const range = to - from;
+  const isInView = useInView(ref, { once: true, margin: '0px' });
 
-      const animate = (currentTime: number) => {
-        const elapsed = currentTime - startTime - (delay * 1000);
+  const getDecimalPlaces = (num: number): number => {
+    const str = num.toString();
 
-        if (elapsed < 0) {
-          animationRef.current = requestAnimationFrame(animate);
-          return;
-        }
+    if (str.includes('.')) {
+      const decimals = str.split('.')[1];
 
-        const progress = Math.min(elapsed / (duration * 1000), 1);
-        
-        // Ease out cubic
-        const easeProgress = 1 - Math.pow(1 - progress, 3);
-        
-        const currentCount = from + range * easeProgress;
-        setCount(currentCount);
-
-        if (progress < 1) {
-          animationRef.current = requestAnimationFrame(animate);
-        } else {
-          setCount(to);
-          isAnimatingRef.current = false;
-          if (onEnd) onEnd();
-        }
-      };
-
-      animationRef.current = requestAnimationFrame(animate);
-    };
-
-    startAnimation();
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
+      if (parseInt(decimals, 10) !== 0) {
+        return decimals.length;
       }
-    };
-  }, [to, from, duration, delay, startWhen, onStart, onEnd]);
-
-  const formatNumber = (num: number): string => {
-    const fixed = num.toFixed(decimals);
-    if (separator) {
-      const parts = fixed.split('.');
-      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, separator);
-      return parts.join('.');
     }
-    return fixed;
+
+    return 0;
   };
 
-  return (
-    <span className={`count-up ${className}`}>
-      {prefix}{formatNumber(count)}{suffix}
-    </span>
+  const maxDecimals = Math.max(getDecimalPlaces(from), getDecimalPlaces(to));
+
+  const formatValue = useCallback(
+    (latest: number) => {
+      const hasDecimals = maxDecimals > 0;
+
+      const options: Intl.NumberFormatOptions = {
+        useGrouping: !!separator,
+        minimumFractionDigits: hasDecimals ? maxDecimals : 0,
+        maximumFractionDigits: hasDecimals ? maxDecimals : 0
+      };
+
+      const formattedNumber = Intl.NumberFormat('en-US', options).format(latest);
+
+      return separator ? formattedNumber.replace(/,/g, separator) : formattedNumber;
+    },
+    [maxDecimals, separator]
   );
-};
+
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.textContent = formatValue(direction === 'down' ? to : from);
+    }
+  }, [from, to, direction, formatValue]);
+
+  useEffect(() => {
+    if (isInView && startWhen) {
+      if (typeof onStart === 'function') onStart();
+
+      const timeoutId = setTimeout(() => {
+        motionValue.set(direction === 'down' ? from : to);
+      }, delay * 1000);
+
+      const durationTimeoutId = setTimeout(
+        () => {
+          if (typeof onEnd === 'function') onEnd();
+        },
+        delay * 1000 + duration * 1000
+      );
+
+      return () => {
+        clearTimeout(timeoutId);
+        clearTimeout(durationTimeoutId);
+      };
+    }
+  }, [isInView, startWhen, motionValue, direction, from, to, delay, onStart, onEnd, duration]);
+
+  useEffect(() => {
+    const unsubscribe = springValue.on('change', latest => {
+      if (ref.current) {
+        ref.current.textContent = formatValue(latest);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [springValue, formatValue]);
+
+  return <span className={className} ref={ref} />;
+}

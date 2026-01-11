@@ -3,8 +3,8 @@ import './WebCaptureV2.css';
 import { useState, useRef, useCallback } from "react";
 import axios from "axios";
 import { ReflectiveCard } from "./ReflectiveCard";
-import { CountUp } from "./CountUp";
-import { CaptureResponse, RecognitionResponse } from "../types";
+import CountUp  from "./CountUp";
+import type { CaptureResponse, RecognitionResponse } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://comprefaceapp-production-a8a0.up.railway.app';
 
@@ -176,8 +176,8 @@ export const WebCaptureV2: React.FC = () => {
                                                 to={resultRecognize.result[0].subjects?.[0]?.similarity ? resultRecognize.result[0].subjects[0].similarity * 100 : 0}
                                                 from={0}
                                                 duration={1.5}
-                                                decimals={2}
-                                                suffix="%"
+                                                // decimals={2}
+                                                // suffix="%"
                                                 className="count-up-similarity"
                                             />
                                         </span>
@@ -189,8 +189,8 @@ export const WebCaptureV2: React.FC = () => {
                                                 to={resultRecognize.result[0].box?.probability ? resultRecognize.result[0].box.probability * 100 : 0}
                                                 from={0}
                                                 duration={1.5}
-                                                decimals={2}
-                                                suffix="%"
+                                                // decimals={2}
+                                                // suffix="%"
                                                 className="count-up-probability"
                                             />
                                         </span>
