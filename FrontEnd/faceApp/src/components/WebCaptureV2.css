@@ -1,0 +1,299 @@
+
+.webcam-container {
+    min-height: 100vh;
+    padding: 40px 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    gap: 30px;
+    position: relative;
+}
+
+.webcam-card {
+    width: 320px;
+    height: 450px;
+    padding: 16px;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-start;
+}
+
+.webcam-video {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4/3;
+    border-radius: 16px;
+    transform: scaleX(-1);
+    object-fit: cover;
+}
+
+.controls-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    z-index: 10;
+}
+
+.mode-selector {
+    display: flex;
+    gap: 15px;
+    background: rgba(30, 30, 30, 0.8);
+    backdrop-filter: blur(10px);
+    padding: 8px;
+    border-radius: 50px;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.mode-selector label {
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.mode-selector label input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.mode-selector label span {
+    display: block;
+    padding: 12px 30px;
+    border-radius: 50px;
+    font-size: 15px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    transition: all 0.3s ease;
+}
+
+.mode-selector label.active span {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+}
+
+.mode-selector label:not(.active):hover span {
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(76, 175, 80, 0.1);
+}
+
+.capture-button {
+    padding: 16px 48px;
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 24px rgba(76, 175, 80, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.capture-button::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.6s;
+}
+
+.capture-button:hover:not(:disabled)::before {
+    transform: translateX(100%);
+}
+
+.capture-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(76, 175, 80, 0.4);
+}
+
+.capture-button:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.capture-button:disabled {
+    background: linear-gradient(135deg, #666, #555);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.result-card {
+    width: 90%;
+    max-width: 700px;
+    padding: 30px;
+    animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.result-content {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.captured-image-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.captured-image {
+    max-width: 300px;
+    max-height: 300px;
+    border-radius: 16px;
+    border: 2px solid rgba(76, 175, 80, 0.3);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.result-info {
+    background: rgba(20, 20, 20, 0.6);
+    border-radius: 16px;
+    padding: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.result-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.result-icon {
+    font-size: 32px;
+}
+
+.result-header h3 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: white;
+}
+
+.result-details {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.detail-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateX(5px);
+}
+
+.detail-label {
+    font-size: 15px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.detail-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: white;
+}
+
+.detail-value.highlight {
+    color: #4CAF50;
+    font-size: 20px;
+}
+
+.detail-value.percentage {
+    font-size: 28px;
+    background: linear-gradient(135deg, #4CAF50, #81C784);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.count-up-similarity,
+.count-up-probability {
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.result-info.success {
+    border-left: 4px solid #4CAF50;
+}
+
+.result-info.recognition {
+    border-left: 4px solid #2196F3;
+}
+
+.result-info.empty {
+    border-left: 4px solid #F44336;
+}
+
+.empty-message {
+    margin: 10px 0 0;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 15px;
+}
+
+@media (max-width: 768px) {
+    .webcam-card {
+        width: 90vw;
+        height: 90vw;
+        max-width: 400px;
+        max-height: 400px;
+    }
+
+    .mode-selector {
+        flex-direction: column;
+        width: 100%;
+        max-width: 300px;
+        border-radius: 20px;
+    }
+
+    .mode-selector label span {
+        text-align: center;
+    }
+
+    .capture-button {
+        width: 100%;
+        max-width: 300px;
+    }
+
+    .result-card {
+        width: 95%;
+    }
+
+    .captured-image {
+        max-width: 250px;
+        max-height: 250px;
+    }
+
+    .detail-item {
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+    }
+}

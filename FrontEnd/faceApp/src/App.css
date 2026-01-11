@@ -11,6 +11,8 @@
   /* background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); */
   background: transparent;
   padding: 10px;
+  position: relative;
+  z-index: 1;
 }
 
 .app-title {
@@ -36,7 +38,8 @@ body {
   padding: 0;
   box-sizing: border-box;
   overflow-x: hidden;
-  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  background: radial-gradient(circle at 20% 20%, rgba(30, 30, 30, 0.9), rgba(5, 5, 5, 0.95) 45%),
+              linear-gradient(135deg, #020202 0%, #0e0e0e 100%);
 }
 
 h1 {
