@@ -1,6 +1,8 @@
 import { CompreFace } from '@exadel/compreface-js-sdk';
 
-const url = process.env.COMPRE_FACE_URL || 'https://demo.compreface.ai';
-// const port = 443;
+const urlRaw = process.env.COMPRE_FACE_URL || 'https://compreface.schneidersebastian.com';
 
-export const compreFace = new CompreFace(url);
+// Eliminamos el protocolo 'https://' porque el SDK lo añade internamente según el puerto
+const cleanDomain = urlRaw.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+export const compreFace = new CompreFace(cleanDomain, 443);
