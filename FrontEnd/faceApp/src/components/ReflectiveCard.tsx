@@ -1,4 +1,5 @@
-import { ReactNode, useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
+import type { ReactNode }  from 'react';
 import './ReflectiveCard.css';
 
 interface ReflectiveCardProps {

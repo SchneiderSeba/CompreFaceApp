@@ -2,7 +2,7 @@ import WebCam from "react-webcam";
 import './WebCapture.css';
 import { useState, useRef, useCallback } from "react";
 import axios from "axios";
-import { CaptureResponse, RecognitionResponse } from "../types";
+import type { CaptureResponse, RecognitionResponse } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://comprefaceapp-production-a8a0.up.railway.app';
 
