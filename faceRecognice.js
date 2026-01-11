@@ -65,15 +65,15 @@ export async function recognizFace(base64Image) {
     const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
     const imageBuffer = Buffer.from(base64Data, 'base64');
 
-    // tempPath = `./TempImage/temp_rec_${Date.now()}.jpg`;
-    // fs.writeFileSync(tempPath, imageBuffer);
-
-    const tempPath = path.join(os.tmpdir(), `face_${Date.now()}.jpg`);
+    tempPath = `./TempImage/temp_rec_${Date.now()}.jpg`;
     fs.writeFileSync(tempPath, imageBuffer);
+
+    // const tempPath = path.join(os.tmpdir(), `face_${Date.now()}.jpg`);
+    // fs.writeFileSync(tempPath, imageBuffer);
 
     const response = await recognitionService.recognize(tempPath, {
       limit: 1,
-      det_prob_threshold: 0.98
+      det_prob_threshold: 0.85
     });
 
     fs.unlinkSync(tempPath);
