@@ -31,15 +31,15 @@ export const CountUp: React.FC<CountUpProps> = ({
   onEnd
 }) => {
   const [count, setCount] = useState(from);
-  const [isAnimating, setIsAnimating] = useState(false);
   const animationRef = useRef<number>();
+  const isAnimatingRef = useRef(false);
 
   useEffect(() => {
-    if (!startWhen || isAnimating) return;
+    if (!startWhen || isAnimatingRef.current) return;
 
     const startAnimation = () => {
       if (onStart) onStart();
-      setIsAnimating(true);
+      isAnimatingRef.current = true;
 
       const startTime = performance.now();
       const range = to - from;
@@ -64,7 +64,7 @@ export const CountUp: React.FC<CountUpProps> = ({
           animationRef.current = requestAnimationFrame(animate);
         } else {
           setCount(to);
-          setIsAnimating(false);
+          isAnimatingRef.current = false;
           if (onEnd) onEnd();
         }
       };
@@ -80,6 +80,7 @@ export const CountUp: React.FC<CountUpProps> = ({
       }
     };
   }, [to, from, duration, delay, startWhen]);
+  }, [to, from, duration, delay, startWhen, onStart, onEnd]);
 
   const formatNumber = (num: number): string => {
     const fixed = num.toFixed(decimals);

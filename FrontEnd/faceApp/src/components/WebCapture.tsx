@@ -2,6 +2,7 @@ import WebCam from "react-webcam";
 import './WebCapture.css';
 import { useState, useRef, useCallback } from "react";
 import axios from "axios";
+import { CaptureResponse, RecognitionResponse } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://comprefaceapp-production-a8a0.up.railway.app';
 
@@ -9,27 +10,26 @@ export const WebCapture: React.FC = () => {
     const webcamRef = useRef<WebCam>(null);
     const [screenShotSrc, setScreenshotSrc] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
-    const [resultManually, setResultManually] = useState<any>(null);
-    const [resultRecognize, setResultRecognize] = useState<any>(null);
+    const [resultManually, setResultManually] = useState<CaptureResponse | null>(null);
+    const [resultRecognize, setResultRecognize] = useState<RecognitionResponse | null>(null);
     const [captureMode, setCaptureMode] = useState<'new' | 'recognize'>('recognize');
 
-    const capture = useCallback(() => {
-        const screenshot = webcamRef.current?.getScreenshot();
-        if (screenshot && captureMode === 'new') {
-            handleCaptureNew(screenshot);
-        } else if (screenshot && captureMode === 'recognize') {
-            handeCaptureRecognize(screenshot);
-        } else {
-            alert('Error capturing image');
+    const getErrorMessage = useCallback((error: unknown) => {
+        if (axios.isAxiosError(error)) {
+            return error.response?.data?.error || error.message || 'Error al procesar la imagen';
         }
-    }, [captureMode]);
+        if (error instanceof Error) {
+            return error.message;
+        }
+        return 'Error al procesar la imagen';
+    }, []);
 
-    const handleCaptureNew = async (screenshot: string) => {
+    const handleCaptureNew = useCallback(async (screenshot: string) => {
         setScreenshotSrc(screenshot);
         setLoading(true);
         
         try {
-            const response = await axios.post(`${API_URL}/capture`, {
+            const response = await axios.post<CaptureResponse>(`${API_URL}/capture`, {
                 image: screenshot,
                 name: 'Sebastian'
             });
@@ -37,33 +37,42 @@ export const WebCapture: React.FC = () => {
             console.log('Face added:', response.data);
             setResultManually(response.data);
             setResultRecognize(null);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error uploading image:', error);
-            const errorMessage = error.response?.data?.error || error.message || 'Error al procesar la imagen';
-            alert(errorMessage);
+            alert(getErrorMessage(error));
         } finally {
             setLoading(false);
         }
-    };
+    }, [getErrorMessage]);
 
-    const handeCaptureRecognize = async (screenshot: string) => {
+    const handleCaptureRecognize = useCallback(async (screenshot: string) => {
         setScreenshotSrc(screenshot);
         setLoading(true);
         try {
-            const response = await axios.post(`${API_URL}/recognize`, {
+            const response = await axios.post<RecognitionResponse>(`${API_URL}/recognize`, {
                 image: screenshot
             });
             console.log('Recognition result:', response.data);
             setResultRecognize(response.data);
             setResultManually(null);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error recognizing image:', error);
-            const errorMessage = error.response?.data?.error || error.message || 'Error al procesar la imagen';
-            alert(errorMessage);
+            alert(getErrorMessage(error));
         } finally {
             setLoading(false);
         }
-    };
+    }, [getErrorMessage]);
+
+    const capture = useCallback(() => {
+        const screenshot = webcamRef.current?.getScreenshot();
+        if (screenshot && captureMode === 'new') {
+            handleCaptureNew(screenshot);
+        } else if (screenshot && captureMode === 'recognize') {
+            handleCaptureRecognize(screenshot);
+        } else {
+            alert('Error capturing image');
+        }
+    }, [captureMode, handleCaptureNew, handleCaptureRecognize]);
 
     return (
         <div className="webcam-container"> 

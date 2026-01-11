@@ -1,7 +1,7 @@
 import './App.css'
 // import axios from 'axios'
 import { useState } from 'react'
-import { WebCapture } from './components/WebCapture'
+// import { WebCapture } from './components/WebCapture'
 import { AddManually } from './components/AddManually'
 import { WebCaptureV2 } from './components/WebCaptureV2'
 import ParticlesBackground from './components/ParticlesBackground'
@@ -20,8 +20,7 @@ const [isAuthenticated, setIsAuthenticated] = useState(false);
         particleBaseSize={100}
         moveParticlesOnHover={true}
         alphaParticles={false}
-        disableRotation={false}
-      />
+        disableRotation={false} className={undefined}      />
       
       <div className="app-container">
         <h1 className="app-title">Face Recognition App</h1>
