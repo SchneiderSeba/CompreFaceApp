@@ -1,3 +1,6 @@
+import fs from "fs";
+import path from "path";
+
 /**
  * Script para limpiar la carpeta TempImage cada 5 minutos
  */
