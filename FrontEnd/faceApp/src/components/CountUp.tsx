@@ -79,7 +79,6 @@ export const CountUp: React.FC<CountUpProps> = ({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [to, from, duration, delay, startWhen]);
   }, [to, from, duration, delay, startWhen, onStart, onEnd]);
 
   const formatNumber = (num: number): string => {
