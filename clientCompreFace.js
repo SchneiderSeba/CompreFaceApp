@@ -1,9 +1,8 @@
 import { CompreFace } from '@exadel/compreface-js-sdk';
 
-// 1. Extrae solo el dominio, SIN 'https://' y SIN '/' al final
-const urlRaw = process.env.COMPRE_FACE_URL || 'compreface.schneidersebastian.com';
-const cleanDomain = urlRaw.replace(/^https?:\/\//, '').replace(/\/$/, '');
+// 1. Forzamos el dominio sin protocolo
+const domain = "compreface.schneidersebastian.com";
 
-// 2. Para usar HTTPS, el puerto DEBE ser 443. 
-// El SDK usará https:// automáticamente si el puerto es 443.
-export const compreFace = new CompreFace(cleanDomain, 443);
+// 2. Inicializamos con puerto 443 como NÚMERO
+// Al ser 443, el SDK usará HTTPS automáticamente
+export const compreFace = new CompreFace(domain, 443);
