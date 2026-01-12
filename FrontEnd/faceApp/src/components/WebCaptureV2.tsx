@@ -10,7 +10,6 @@ const API_URL = import.meta.env.VITE_API_URL || 'https://comprefaceapp-productio
 
 export const WebCaptureV2: React.FC = () => {
     const webcamRef = useRef<WebCam>(null);
-    const [screenShotSrc, setScreenshotSrc] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [resultManually, setResultManually] = useState<CaptureResponse | null>(null);
     const [resultRecognize, setResultRecognize] = useState<RecognitionResponse | null>(null);
@@ -50,7 +49,6 @@ export const WebCaptureV2: React.FC = () => {
     }, []);
 
     const handleCaptureNew = useCallback(async (screenshot: string) => {
-        setScreenshotSrc(screenshot);
         setLoading(true);
         try {
             const response = await axios.post<CaptureResponse>(`${API_URL}/capture`, {
@@ -69,7 +67,6 @@ export const WebCaptureV2: React.FC = () => {
     }, [getErrorMessage]);
 
     const handleCaptureRecognize = useCallback(async (screenshot: string) => {
-        setScreenshotSrc(screenshot);
         setLoading(true);
         try {
             const response = await axios.post<RecognitionResponse>(`${API_URL}/recognize`, {
@@ -146,11 +143,6 @@ export const WebCaptureV2: React.FC = () => {
 
                 <div className="result-panel">
                     <div className="result-panel-upper">
-                        {screenShotSrc && (
-                            <div className="captured-image-container">
-                                <img src={screenShotSrc} alt="Captured" className="captured-image" />
-                            </div>
-                        )}
                         {resultManually ? (
                             <div className="result-info success">
                                 <h3>Face Added</h3>
