@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import type { ReactNode }  from 'react';
 import './ReflectiveCard.css';
+import CountUp from './CountUp';
 
 interface ReflectiveCardProps {
   children: ReactNode;
@@ -8,6 +9,8 @@ interface ReflectiveCardProps {
   metalness?: number;
   roughness?: number;
   className?: string;
+  subjectName?: string;
+  subjectSimilarity?: number | null;
 }
 
 export const ReflectiveCard: React.FC<ReflectiveCardProps> = ({
@@ -15,7 +18,9 @@ export const ReflectiveCard: React.FC<ReflectiveCardProps> = ({
   blurStrength = 12,
   metalness = 1,
   roughness = 0.75,
-  className = ''
+  className = '',
+  subjectName = '',
+  subjectSimilarity = null
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [rotation, setRotation] = useState({ x: 0, y: 0 });
@@ -57,6 +62,7 @@ export const ReflectiveCard: React.FC<ReflectiveCardProps> = ({
     };
   }, []);
 
+
   return (
     <div
       ref={cardRef}
@@ -72,6 +78,42 @@ export const ReflectiveCard: React.FC<ReflectiveCardProps> = ({
     >
       <div className="reflective-card-content">
         {children}
+        {subjectName && (
+          <div className="recognition-info">
+            <h4>Recognition Results:</h4>
+            <p>Name: {subjectName}</p>
+            {subjectSimilarity !== null && (
+              <>
+              <div className="detail-item metric">
+                                                      <span className="detail-label">Similarity:</span>
+                                                      <span className="detail-value percentage">
+                                                          <CountUp 
+                                                              to={subjectSimilarity ? subjectSimilarity * 100 : 0}
+                                                              from={0}
+                                                              duration={1}
+                                                              // decimals={2}
+                                                              // suffix="%"
+                                                              className="count-up-similarity"
+                                                          />
+                                                      </span>
+                                                  </div>
+                                                  <div className="detail-item metric">
+                                                      <span className="detail-label">Detection Probability:</span>
+                                                      <span className="detail-value percentage">
+                                                          <CountUp 
+                                                              to={subjectSimilarity ? subjectSimilarity * 100 : 0}
+                                                              from={0}
+                                                              duration={1}
+                                                              // decimals={2}
+                                                              // suffix="%"
+                                                              className="count-up-probability"
+                                                          />
+                                                      </span>
+                                                  </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
       <div className="reflective-card-glare" />
       <div className="reflective-card-shine" />

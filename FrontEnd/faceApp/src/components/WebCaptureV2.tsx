@@ -3,16 +3,16 @@ import './WebCaptureV2.css';
 import { useState, useRef, useCallback, useEffect } from "react";
 import axios from "axios";
 import { ReflectiveCard } from "./ReflectiveCard";
-import CountUp  from "./CountUp";
+// import CountUp  from "./CountUp";
 import type { CaptureResponse, RecognitionResponse } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://comprefaceapp-production-a8a0.up.railway.app';
 
 export const WebCaptureV2: React.FC = () => {
     const webcamRef = useRef<WebCam>(null);
-    const [screenShotSrc, setScreenshotSrc] = useState<string | null>(null);
+    const [, setScreenshotSrc] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
-    const [resultManually, setResultManually] = useState<CaptureResponse | null>(null);
+    const [, setResultManually] = useState<CaptureResponse | null>(null);
     const [resultRecognize, setResultRecognize] = useState<RecognitionResponse | null>(null);
     const [captureMode, setCaptureMode] = useState<'new' | 'recognize'>('recognize');
     const [cameraError, setCameraError] = useState<string | null>(null);
@@ -110,6 +110,8 @@ export const WebCaptureV2: React.FC = () => {
                 metalness={0.9}
                 roughness={0.6}
                 className="webcam-card"
+                subjectName={resultRecognize?.result?.[0]?.subjects?.[0]?.subject || ''}
+                subjectSimilarity={resultRecognize?.result?.[0]?.subjects?.[0]?.similarity || null}
             >
                 <WebCam 
                     key={cameraKey}
@@ -145,53 +147,10 @@ export const WebCaptureV2: React.FC = () => {
                         setCameraReady(false);
                     }}
                 />
-            </ReflectiveCard>
 
-            <div className="controls-section">
-                <div className="mode-selector">
-                    <label className={captureMode === 'new' ? 'active' : ''}>
-                        <input 
-                            type="radio" 
-                            name="captureMode" 
-                            value="new"
-                            checked={captureMode === 'new'}
-                            onChange={() => setCaptureMode('new')}
-                        />
-                        <span>🆕 New Face</span>
-                    </label>
-                    <label className={captureMode === 'recognize' ? 'active' : ''}>
-                        <input 
-                            type="radio" 
-                            name="captureMode" 
-                            value="recognize"
-                            checked={captureMode === 'recognize'}
-                            onChange={() => setCaptureMode('recognize')}
-                        />
-                        <span>🔍 Recognize</span>
-                    </label>
-                </div>
+                {/* AQUI */}
                 
-                <button 
-                    onClick={capture} 
-                    className="capture-button"
-                    disabled={loading || !!cameraError}
-                >
-                    {loading ? '⏳ Processing...' : '📸 Capture Photo'}
-                </button>
-                {cameraError && (
-                    <div className="camera-error">
-                        <p>
-                            {cameraError}<br />
-                            Brave: abre el escudo 🛡️ y permite "Fingerprinting"/"Camera" para este sitio.
-                        </p>
-                        <button type="button" className="retry-camera-button" onClick={retryCamera}>
-                            🔄 Reintentar cámara
-                        </button>
-                    </div>
-                )}
-            </div>
-
-            {screenShotSrc && (
+                {/* {screenShotSrc && (
                 <ReflectiveCard className="result-card">
                     <div className="result-content">
                         <div className="captured-image-container">
@@ -267,7 +226,56 @@ export const WebCaptureV2: React.FC = () => {
                         )}
                     </div>
                 </ReflectiveCard>
-            )}
+            )} */}
+
+
+                {/* AQUI */}
+
+            </ReflectiveCard>
+
+            <div className="controls-section">
+                <div className="mode-selector">
+                    <label className={captureMode === 'new' ? 'active' : ''}>
+                        <input 
+                            type="radio" 
+                            name="captureMode" 
+                            value="new"
+                            checked={captureMode === 'new'}
+                            onChange={() => setCaptureMode('new')}
+                        />
+                        <span>🆕 New Face</span>
+                    </label>
+                    <label className={captureMode === 'recognize' ? 'active' : ''}>
+                        <input 
+                            type="radio" 
+                            name="captureMode" 
+                            value="recognize"
+                            checked={captureMode === 'recognize'}
+                            onChange={() => setCaptureMode('recognize')}
+                        />
+                        <span>🔍 Recognize</span>
+                    </label>
+                </div>
+                
+                <button 
+                    onClick={capture} 
+                    className="capture-button"
+                    disabled={loading || !!cameraError}
+                >
+                    {loading ? '⏳ Processing...' : '📸 Capture Photo'}
+                </button>
+                {cameraError && (
+                    <div className="camera-error">
+                        <p>
+                            {cameraError}<br />
+                            Brave: abre el escudo 🛡️ y permite "Fingerprinting"/"Camera" para este sitio.
+                        </p>
+                        <button type="button" className="retry-camera-button" onClick={retryCamera}>
+                            🔄 Reintentar cámara
+                        </button>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
