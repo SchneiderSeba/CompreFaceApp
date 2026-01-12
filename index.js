@@ -18,9 +18,10 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         "default-src": ["'self'"],
-        "script-src": ["'self'", "'unsafe-eval'"], // ESTA ES LA CLAVE
+        "script-src": ["'self'", "'unsafe-eval'"],
         "connect-src": ["'self'", "https://comprefaceapp-production-a8a0.up.railway.app"],
         "img-src": ["'self'", "data:", "blob:"],
+        // agrega script-src-elem, style-src, font-src, etc. según necesites
       },
     },
   })
