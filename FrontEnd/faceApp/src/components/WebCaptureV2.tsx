@@ -13,6 +13,7 @@ export const WebCaptureV2: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [resultManually, setResultManually] = useState<CaptureResponse | null>(null);
     const [resultRecognize, setResultRecognize] = useState<RecognitionResponse | null>(null);
+    const [recognizeError, setRecognizeError] = useState<string | null>(null);
     const [captureMode, setCaptureMode] = useState<'new' | 'recognize'>('recognize');
     const [cameraError, setCameraError] = useState<string | null>(null);
     const [cameraReady, setCameraReady] = useState(false);
@@ -75,9 +76,14 @@ export const WebCaptureV2: React.FC = () => {
             console.log('Recognition result:', response.data);
             setResultRecognize(response.data);
             setResultManually(null);
+            setRecognizeError(null);
         } catch (error: unknown) {
             console.error('Error recognizing image:', error);
-            alert(getErrorMessage(error));
+            setRecognizeError(getErrorMessage(error));
+            const cleanTimer = setTimeout(() => {
+                setRecognizeError(null);
+            }, 2500);
+            return () => clearTimeout(cleanTimer);
         } finally {
             setLoading(false);
         }
@@ -196,8 +202,14 @@ export const WebCaptureV2: React.FC = () => {
                                 </div>
                             </>
                         ) : (
-                            <p className="result-placeholder">Captura una foto y presiona "Recognize" para ver los datos aquí.</p>
+                            <p className={`result-placeholder ${recognizeError ? 'disable' : ''}`}>Captura una foto y presiona "Recognize" para ver los datos aquí.</p>
                         )}
+
+                        {recognizeError ? (
+                            <div className="recognize-error">
+                                <p>{recognizeError}</p>
+                            </div>
+                        ) : null}
                     </div>
                 </div>
             </ReflectiveCard>

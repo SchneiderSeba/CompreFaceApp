@@ -76,6 +76,11 @@ export async function recognizFace(base64Image) {
       det_prob_threshold: 0.85
     });
 
+    if (response.det_prob_threshold < 0.85) {
+      throw new Error('No se pudo reconocer un rostro en la imagen. Intenta acercarte o mejora la iluminación.');
+      return
+    }
+
     fs.unlinkSync(tempPath);
     console.log("Recognition result:", response);
     return response;
