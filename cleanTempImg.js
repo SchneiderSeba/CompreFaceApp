@@ -44,7 +44,9 @@ export function cleanTempFolder() {
   });
 }
 
+fiveMin = 5 * 60 * 1000;
+
 // Ejecutar cada 5 minutos (300,000 milisegundos)
-setInterval(cleanTempFolder, 5 * 60 * 1000);
+setInterval(cleanTempFolder, fiveMin);
 
 // Ejecutar una vez al arrancar el servidor
