@@ -83,6 +83,16 @@ export const WebCaptureV2: React.FC = () => {
         }
     }, [getErrorMessage]);
 
+    const recognitionResult = resultRecognize?.result?.[0];
+    const similarityPercent = recognitionResult?.subjects?.[0]?.similarity
+        ? recognitionResult.subjects[0].similarity * 100
+        : 0;
+    const detectionPercent = recognitionResult?.box?.probability
+        ? recognitionResult.box.probability * 100
+        : 0;
+    const isSimilarityHigh = similarityPercent > 85;
+    const isDetectionHigh = detectionPercent > 85;
+
     const capture = useCallback(() => {
         if (!cameraReady) {
             alert('La cámara aún no está lista. Revisa los permisos del navegador.');
@@ -141,7 +151,7 @@ export const WebCaptureV2: React.FC = () => {
                     }}
                 />
 
-                <div className="result-panel">
+                <div >
                     <div className="result-panel-upper">
                         {resultManually ? (
                             <div className="result-info success">
@@ -151,19 +161,19 @@ export const WebCaptureV2: React.FC = () => {
                             </div>
                         ) : null}
                     </div>
-                    <div className="result-panel-lower">
-                        {resultRecognize?.result?.length ? (
+                    <div>
+                        {recognitionResult ? (
                             <>
                                 <p className="result-title">Recognition Results</p>
                                 <p className="result-label">
-                                    {resultRecognize.result[0].subjects?.[0]?.subject ?? 'Unknown'}
+                                    {recognitionResult.subjects?.[0]?.subject ?? 'Unknown'}
                                 </p>
                                 <div className="result-metrics">
                                     <div>
                                         <span className="metric-label">Similarity</span>
-                                        <span className="metric-value">
+                                        <span className={`metric-value ${isSimilarityHigh ? 'metric-value--good' : ''}`}>
                                             <CountUp
-                                                to={resultRecognize.result[0].subjects?.[0]?.similarity ? resultRecognize.result[0].subjects[0].similarity * 100 : 0}
+                                                to={similarityPercent}
                                                 from={0}
                                                 duration={1}
                                                 suffix="%"
@@ -173,9 +183,9 @@ export const WebCaptureV2: React.FC = () => {
                                     </div>
                                     <div>
                                         <span className="metric-label">Detection</span>
-                                        <span className="metric-value">
+                                        <span className={`metric-value ${isDetectionHigh ? 'metric-value--good' : ''}`}>
                                             <CountUp
-                                                to={resultRecognize.result[0].box?.probability ? resultRecognize.result[0].box.probability * 100 : 0}
+                                                to={detectionPercent}
                                                 from={0}
                                                 duration={1}
                                                 suffix="%"
