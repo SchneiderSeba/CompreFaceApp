@@ -11,6 +11,19 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json({ limit: '60mb' })); // Aumentar límite para imágenes base64
 app.use(express.urlencoded({ extended: true, limit: '60mb' }));
+// Si usas Helmet, configúralo específicamente para permitir unsafe-eval
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        "default-src": ["'self'"],
+        "script-src": ["'self'", "'unsafe-eval'"], // ESTA ES LA CLAVE
+        "connect-src": ["'self'", "https://comprefaceapp-production-a8a0.up.railway.app"],
+        "img-src": ["'self'", "data:", "blob:"],
+      },
+    },
+  })
+);
 
 app.get('/', async (req, res) => {
   try {
