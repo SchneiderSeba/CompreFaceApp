@@ -1,6 +1,6 @@
 import WebCam from "react-webcam";
 import './WebCaptureV2.css';
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import axios from "axios";
 import { ReflectiveCard } from "./ReflectiveCard";
 import CountUp  from "./CountUp";
@@ -15,6 +15,29 @@ export const WebCaptureV2: React.FC = () => {
     const [resultManually, setResultManually] = useState<CaptureResponse | null>(null);
     const [resultRecognize, setResultRecognize] = useState<RecognitionResponse | null>(null);
     const [captureMode, setCaptureMode] = useState<'new' | 'recognize'>('recognize');
+    const [cameraError, setCameraError] = useState<string | null>(null);
+    const [cameraReady, setCameraReady] = useState(false);
+    const [cameraKey, setCameraKey] = useState(0);
+
+    const releaseCameraStream = useCallback(() => {
+        const stream = webcamRef.current?.video?.srcObject;
+        if (stream instanceof MediaStream) {
+            stream.getTracks().forEach((track) => {
+                track.stop();
+            });
+        }
+    }, []);
+
+    const retryCamera = useCallback(() => {
+        releaseCameraStream();
+        setCameraError(null);
+        setCameraReady(false);
+        setCameraKey((prev) => prev + 1);
+    }, [releaseCameraStream]);
+
+    useEffect(() => () => {
+        releaseCameraStream();
+    }, [releaseCameraStream]);
 
     const getErrorMessage = useCallback((error: unknown) => {
         if (axios.isAxiosError(error)) {
@@ -66,6 +89,10 @@ export const WebCaptureV2: React.FC = () => {
     }, [getErrorMessage]);
 
     const capture = useCallback(() => {
+        if (!cameraReady) {
+            alert('La cámara aún no está lista. Revisa los permisos del navegador.');
+            return;
+        }
         const screenshot = webcamRef.current?.getScreenshot();
         if (screenshot && captureMode === 'new') {
             handleCaptureNew(screenshot);
@@ -74,7 +101,7 @@ export const WebCaptureV2: React.FC = () => {
         } else {
             alert('Error capturing image');
         }
-    }, [captureMode, handleCaptureNew, handleCaptureRecognize]);
+    }, [cameraReady, captureMode, handleCaptureNew, handleCaptureRecognize]);
 
     return (
         <div className="webcam-container">
@@ -85,6 +112,7 @@ export const WebCaptureV2: React.FC = () => {
                 className="webcam-card"
             >
                 <WebCam 
+                    key={cameraKey}
                     ref={webcamRef}
                     audio={false} 
                     className="webcam-video"
@@ -96,6 +124,26 @@ export const WebCaptureV2: React.FC = () => {
                         facingMode: "user"
                     }}
                     mirrored={true}
+                    onUserMedia={() => {
+                        setCameraReady(true);
+                        setCameraError(null);
+                    }}
+                    onUserMediaError={(error) => {
+                        console.error('Camera access error:', error);
+                         releaseCameraStream();
+                        let message = 'No se pudo acceder a la cámara. Verifica los permisos del navegador.';
+                        if (error instanceof DOMException) {
+                            if (error.name === 'NotAllowedError') {
+                                message = 'Acceso denegado. Permite el uso de la cámara (ícono del candado o Brave Shields).';
+                            } else if (error.name === 'NotFoundError') {
+                                message = 'No se detectó ninguna cámara disponible.';
+                            } else if (error.name === 'NotReadableError') {
+                                message = 'Brave bloqueó el stream (NotReadable). Cierra apps que usen la cámara y en Shields ajusta Fingerprinting → Allow all.';
+                            }
+                        }
+                        setCameraError(message);
+                        setCameraReady(false);
+                    }}
                 />
             </ReflectiveCard>
 
@@ -126,10 +174,21 @@ export const WebCaptureV2: React.FC = () => {
                 <button 
                     onClick={capture} 
                     className="capture-button"
-                    disabled={loading}
+                    disabled={loading || !!cameraError}
                 >
                     {loading ? '⏳ Processing...' : '📸 Capture Photo'}
                 </button>
+                {cameraError && (
+                    <div className="camera-error">
+                        <p>
+                            {cameraError}<br />
+                            Brave: abre el escudo 🛡️ y permite "Fingerprinting"/"Camera" para este sitio.
+                        </p>
+                        <button type="button" className="retry-camera-button" onClick={retryCamera}>
+                            🔄 Reintentar cámara
+                        </button>
+                    </div>
+                )}
             </div>
 
             {screenShotSrc && (
