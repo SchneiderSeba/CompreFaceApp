@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { addNewFaceToPullManualy } from './faceRecognice.js';
+import helmet from 'helmet';
 
 dotenv.config();
 
