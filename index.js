@@ -19,7 +19,7 @@ app.use(
       directives: {
         "default-src": ["'self'"],
         "script-src": ["'self'", "'unsafe-eval'"],
-        "connect-src": ["'self'", "https://comprefaceapp-production-a8a0.up.railway.app"],
+        "connect-src": ["'self'", "https://facerecognize.schneidersebastian.com"],
         "img-src": ["'self'", "data:", "blob:"],
         // agrega script-src-elem, style-src, font-src, etc. según necesites
       },
