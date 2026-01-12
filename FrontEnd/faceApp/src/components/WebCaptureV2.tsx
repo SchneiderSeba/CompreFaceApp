@@ -3,16 +3,16 @@ import './WebCaptureV2.css';
 import { useState, useRef, useCallback, useEffect } from "react";
 import axios from "axios";
 import { ReflectiveCard } from "./ReflectiveCard";
-// import CountUp  from "./CountUp";
+import CountUp from "./CountUp";
 import type { CaptureResponse, RecognitionResponse } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://comprefaceapp-production-a8a0.up.railway.app';
 
 export const WebCaptureV2: React.FC = () => {
     const webcamRef = useRef<WebCam>(null);
-    const [, setScreenshotSrc] = useState<string | null>(null);
+    const [screenShotSrc, setScreenshotSrc] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
-    const [, setResultManually] = useState<CaptureResponse | null>(null);
+    const [resultManually, setResultManually] = useState<CaptureResponse | null>(null);
     const [resultRecognize, setResultRecognize] = useState<RecognitionResponse | null>(null);
     const [captureMode, setCaptureMode] = useState<'new' | 'recognize'>('recognize');
     const [cameraError, setCameraError] = useState<string | null>(null);
@@ -52,13 +52,11 @@ export const WebCaptureV2: React.FC = () => {
     const handleCaptureNew = useCallback(async (screenshot: string) => {
         setScreenshotSrc(screenshot);
         setLoading(true);
-        
         try {
             const response = await axios.post<CaptureResponse>(`${API_URL}/capture`, {
                 image: screenshot,
                 name: 'Sebastian'
             });
-            
             console.log('Face added:', response.data);
             setResultManually(response.data);
             setResultRecognize(null);
@@ -110,8 +108,6 @@ export const WebCaptureV2: React.FC = () => {
                 metalness={0.9}
                 roughness={0.6}
                 className="webcam-card"
-                subjectName={resultRecognize?.result?.[0]?.subjects?.[0]?.subject || ''}
-                subjectSimilarity={resultRecognize?.result?.[0]?.subjects?.[0]?.similarity || null}
             >
                 <WebCam 
                     key={cameraKey}
@@ -132,7 +128,7 @@ export const WebCaptureV2: React.FC = () => {
                     }}
                     onUserMediaError={(error) => {
                         console.error('Camera access error:', error);
-                         releaseCameraStream();
+                        releaseCameraStream();
                         let message = 'No se pudo acceder a la cámara. Verifica los permisos del navegador.';
                         if (error instanceof DOMException) {
                             if (error.name === 'NotAllowedError') {
@@ -148,89 +144,60 @@ export const WebCaptureV2: React.FC = () => {
                     }}
                 />
 
-                {/* AQUI */}
-                
-                {/* {screenShotSrc && (
-                <ReflectiveCard className="result-card">
-                    <div className="result-content">
-                        <div className="captured-image-container">
-                            <img src={screenShotSrc} alt="Captured" className="captured-image" />
-                        </div>
-                        
+                <div className="result-panel">
+                    <div className="result-panel-upper">
+                        {screenShotSrc && (
+                            <div className="captured-image-container">
+                                <img src={screenShotSrc} alt="Captured" className="captured-image" />
+                            </div>
+                        )}
                         {resultManually ? (
                             <div className="result-info success">
-                                <div className="result-header">
-                                    <span className="result-icon">✅</span>
-                                    <h3>Face Added Successfully!</h3>
-                                </div>
-                                <div className="result-details">
-                                    <div className="detail-item">
-                                        <span className="detail-label">Name:</span>
-                                        <span className="detail-value">{resultManually.name}</span>
-                                    </div>
-                                    <div className="detail-item">
-                                        <span className="detail-label">ID:</span>
-                                        <span className="detail-value">{resultManually.image_id}</span>
-                                    </div>
-                                </div>
+                                <h3>Face Added</h3>
+                                <p className="result-label">{resultManually.name}</p>
+                                <p className="result-sub">ID: {resultManually.image_id}</p>
                             </div>
-                        ) : resultRecognize?.result?.length ? (
-                            <div className="result-info recognition">
-                                <div className="result-header">
-                                    <span className="result-icon">🎯</span>
-                                    <h3>Recognition Results</h3>
-                                </div>
-                                <div className="result-details">
-                                    <div className="detail-item">
-                                        <span className="detail-label">Subject:</span>
-                                        <span className="detail-value highlight">
-                                            {resultRecognize.result[0].subjects?.[0]?.subject ?? 'Unknown'}
-                                        </span>
-                                    </div>
-                                    <div className="detail-item metric">
-                                        <span className="detail-label">Similarity:</span>
-                                        <span className="detail-value percentage">
-                                            <CountUp 
+                        ) : null}
+                    </div>
+                    <div className="result-panel-lower">
+                        {resultRecognize?.result?.length ? (
+                            <>
+                                <p className="result-title">Recognition Results</p>
+                                <p className="result-label">
+                                    {resultRecognize.result[0].subjects?.[0]?.subject ?? 'Unknown'}
+                                </p>
+                                <div className="result-metrics">
+                                    <div>
+                                        <span className="metric-label">Similarity</span>
+                                        <span className="metric-value">
+                                            <CountUp
                                                 to={resultRecognize.result[0].subjects?.[0]?.similarity ? resultRecognize.result[0].subjects[0].similarity * 100 : 0}
                                                 from={0}
-                                                duration={1.5}
-                                                // decimals={2}
-                                                // suffix="%"
+                                                duration={1}
+                                                suffix="%"
                                                 className="count-up-similarity"
                                             />
                                         </span>
                                     </div>
-                                    <div className="detail-item metric">
-                                        <span className="detail-label">Detection Probability:</span>
-                                        <span className="detail-value percentage">
-                                            <CountUp 
+                                    <div>
+                                        <span className="metric-label">Detection</span>
+                                        <span className="metric-value">
+                                            <CountUp
                                                 to={resultRecognize.result[0].box?.probability ? resultRecognize.result[0].box.probability * 100 : 0}
                                                 from={0}
-                                                duration={1.5}
-                                                // decimals={2}
-                                                // suffix="%"
+                                                duration={1}
+                                                suffix="%"
                                                 className="count-up-probability"
                                             />
                                         </span>
                                     </div>
                                 </div>
-                            </div>
+                            </>
                         ) : (
-                            <div className="result-info empty">
-                                <div className="result-header">
-                                    <span className="result-icon">❌</span>
-                                    <h3>No Face Detected</h3>
-                                </div>
-                                <p className="empty-message">No recognition results found. Try again with better lighting.</p>
-                            </div>
+                            <p className="result-placeholder">Captura una foto y presiona "Recognize" para ver los datos aquí.</p>
                         )}
                     </div>
-                </ReflectiveCard>
-            )} */}
-
-
-                {/* AQUI */}
-
+                </div>
             </ReflectiveCard>
 
             <div className="controls-section">

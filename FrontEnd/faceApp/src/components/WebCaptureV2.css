@@ -158,6 +158,89 @@
     background: rgba(255, 255, 255, 0.15);
 }
 
+.result-panel {
+    margin-top: 20px;
+    padding: 20px;
+    border-radius: 18px;
+    background: rgba(25, 25, 25, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    color: #fff;
+}
+
+.result-panel-upper {
+    display: flex;
+    justify-content: center;
+}
+
+.captured-image-container {
+    width: 140px;
+    height: 100px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.captured-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.result-panel-lower {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+}
+
+.result-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #8ab6ff;
+}
+
+.result-label {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.result-sub {
+    margin: 2px 0 0;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.result-metrics {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+}
+
+.metric-label {
+    display: block;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.metric-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+}
+
+.result-placeholder {
+    margin: 0;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
 .result-card {
     width: 90%;
     max-width: 700px;
