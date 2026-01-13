@@ -9,6 +9,10 @@
   will-change: transform;
 }
 
+.reflective-card.glow-active {
+  overflow: visible;
+}
+
 .reflective-card::before {
   content: '';
   position: absolute;
