@@ -1,10 +1,15 @@
 import { CompreFace } from '@exadel/compreface-js-sdk';
+import 'dotenv/config';
 
-// Pasamos la URL completa con HTTPS. 
-// Esto obliga al SDK a usar el puerto 443 y el protocolo correcto.
-const url = "https://compreface.schneidersebastian.com";
-const url2 = "http://144.91.112.29";
-const port = 8000
+const configuredUrl = process.env.COMPREFACE_URL || 'http://localhost';
+const parsedUrl = new URL(configuredUrl);
+const server = `${parsedUrl.protocol}//${parsedUrl.hostname}`;
+const defaultPort = parsedUrl.protocol === 'https:' ? 443 : 8000;
+const port = Number(process.env.COMPREFACE_PORT || parsedUrl.port || defaultPort);
 
-// NO pases el segundo parámetro (puerto). Déjalo solo con la URL.
-export const compreFace = new CompreFace(url2, port);
+if (!Number.isInteger(port) || port < 1 || port > 65535) {
+  throw new Error('COMPREFACE_PORT debe ser un puerto válido');
+}
+
+export const compreFace = new CompreFace(server, port);
+export const compreFaceBaseUrl = `${server}:${port}`;

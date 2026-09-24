@@ -1,7 +1,6 @@
-import { useRef, useState, useEffect } from 'react';
-import type { ReactNode }  from 'react';
+import { useState } from 'react';
+import type { CSSProperties, PointerEvent, ReactNode } from 'react';
 import './ReflectiveCard.css';
-import CountUp from './CountUp';
 
 interface ReflectiveCardProps {
   children: ReactNode;
@@ -9,8 +8,6 @@ interface ReflectiveCardProps {
   metalness?: number;
   roughness?: number;
   className?: string;
-  subjectName?: string;
-  subjectSimilarity?: number | null;
 }
 
 export const ReflectiveCard: React.FC<ReflectiveCardProps> = ({
@@ -18,105 +15,55 @@ export const ReflectiveCard: React.FC<ReflectiveCardProps> = ({
   blurStrength = 12,
   metalness = 1,
   roughness = 0.75,
-  className = '',
-  subjectName = '',
-  subjectSimilarity = null
+  className = ''
 }) => {
-  const cardRef = useRef<HTMLDivElement>(null);
   const [rotation, setRotation] = useState({ x: 0, y: 0 });
   const [glarePosition, setGlarePosition] = useState({ x: 50, y: 50 });
+  const [isHovering, setIsHovering] = useState(false);
 
-  useEffect(() => {
-    const card = cardRef.current;
-    if (!card) return;
+  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = Math.min(Math.max(event.clientX - rect.left, 0), rect.width);
+    const y = Math.min(Math.max(event.clientY - rect.top, 0), rect.height);
+    const normalizedX = x / rect.width;
+    const normalizedY = y / rect.height;
 
-    const handleMouseMove = (e: MouseEvent) => {
-      const rect = card.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      
-      const centerX = rect.width / 2;
-      const centerY = rect.height / 2;
-      
-      const rotateX = ((y - centerY) / centerY) * -10;
-      const rotateY = ((x - centerX) / centerX) * 10;
-      
-      setRotation({ x: rotateX, y: rotateY });
-      setGlarePosition({
-        x: (x / rect.width) * 100,
-        y: (y / rect.height) * 100
-      });
-    };
+    setRotation({
+      x: (normalizedY - 0.5) * -8,
+      y: (normalizedX - 0.5) * 8
+    });
+    setGlarePosition({ x: normalizedX * 100, y: normalizedY * 100 });
+  };
 
-    const handleMouseLeave = () => {
-      setRotation({ x: 0, y: 0 });
-      setGlarePosition({ x: 50, y: 50 });
-    };
+  const resetEffects = () => {
+    setIsHovering(false);
+    setRotation({ x: 0, y: 0 });
+    setGlarePosition({ x: 50, y: 50 });
+  };
 
-    card.addEventListener('mousemove', handleMouseMove);
-    card.addEventListener('mouseleave', handleMouseLeave);
-
-    return () => {
-      card.removeEventListener('mousemove', handleMouseMove);
-      card.removeEventListener('mouseleave', handleMouseLeave);
-    };
-  }, []);
-
+  const effectStyle = {
+    '--card-rotate-x': `${rotation.x}deg`,
+    '--card-rotate-y': `${rotation.y}deg`,
+    '--blur-strength': `${blurStrength}px`,
+    '--metalness': metalness,
+    '--roughness': roughness,
+    '--glare-x': `${glarePosition.x}%`,
+    '--glare-y': `${glarePosition.y}%`
+  } as CSSProperties;
 
   return (
     <div
-      ref={cardRef}
-      className={`reflective-card ${className}`}
-      style={{
-        transform: `perspective(1000px) rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`,
-        '--blur-strength': `${blurStrength}px`,
-        '--metalness': metalness,
-        '--roughness': roughness,
-        '--glare-x': `${glarePosition.x}%`,
-        '--glare-y': `${glarePosition.y}%`,
-      } as React.CSSProperties}
+      className={`reflective-card ${isHovering ? 'is-hovering' : ''} ${className}`}
+      onPointerEnter={() => setIsHovering(true)}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={resetEffects}
     >
-      <div className="reflective-card-content">
-        {children}
-        {subjectName && (
-          <div className="recognition-info">
-            <h4>Recognition Results:</h4>
-            <p>Name: {subjectName}</p>
-            {subjectSimilarity !== null && (
-              <>
-              <div className="detail-item metric">
-                                                      <span className="detail-label">Similarity:</span>
-                                                      <span className="detail-value percentage">
-                                                          <CountUp 
-                                                              to={subjectSimilarity ? subjectSimilarity * 100 : 0}
-                                                              from={0}
-                                                              duration={1}
-                                                              // decimals={2}
-                                                              // suffix="%"
-                                                              className="count-up-similarity"
-                                                          />
-                                                      </span>
-                                                  </div>
-                                                  <div className="detail-item metric">
-                                                      <span className="detail-label">Detection Probability:</span>
-                                                      <span className="detail-value percentage">
-                                                          <CountUp 
-                                                              to={subjectSimilarity ? subjectSimilarity * 100 : 0}
-                                                              from={0}
-                                                              duration={1}
-                                                              // decimals={2}
-                                                              // suffix="%"
-                                                              className="count-up-probability"
-                                                          />
-                                                      </span>
-                                                  </div>
-              </>
-            )}
-          </div>
-        )}
+      <div className="reflective-card-aura" style={effectStyle} />
+      <div className="reflective-card-surface" style={effectStyle}>
+        <div className="reflective-card-content">{children}</div>
+        <div className="reflective-card-glare" />
+        <div className="reflective-card-shine" />
       </div>
-      <div className="reflective-card-glare" />
-      <div className="reflective-card-shine" />
     </div>
   );
 };

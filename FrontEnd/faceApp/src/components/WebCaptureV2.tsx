@@ -8,11 +8,17 @@ import type { CaptureResponse, RecognitionResponse } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://comprefaceapp-production-a8a0.up.railway.app';
 
-export const WebCaptureV2: React.FC = () => {
+interface WebCaptureV2Props {
+    canManagePeople: boolean;
+    onUnauthorized: () => void;
+}
+
+export const WebCaptureV2: React.FC<WebCaptureV2Props> = ({ canManagePeople, onUnauthorized }) => {
     const webcamRef = useRef<WebCam>(null);
     const [loading, setLoading] = useState(false);
     const [resultManually, setResultManually] = useState<CaptureResponse | null>(null);
     const [newFaceName, setNewFaceName] = useState<string>('');
+    const [employeeCode, setEmployeeCode] = useState<string>('');
     const [resultRecognize, setResultRecognize] = useState<RecognitionResponse | null>(null);
     const [recognizeError, setRecognizeError] = useState<string | null>(null);
     const [captureMode, setCaptureMode] = useState<'new' | 'recognize'>('recognize');
@@ -40,6 +46,10 @@ export const WebCaptureV2: React.FC = () => {
         releaseCameraStream();
     }, [releaseCameraStream]);
 
+    useEffect(() => {
+        if (!canManagePeople && captureMode === 'new') setCaptureMode('recognize');
+    }, [canManagePeople, captureMode]);
+
     const getErrorMessage = useCallback((error: unknown) => {
         if (axios.isAxiosError(error)) {
             return error.response?.data?.error || error.message || 'Error al procesar la imagen';
@@ -50,23 +60,26 @@ export const WebCaptureV2: React.FC = () => {
         return 'Error al procesar la imagen';
     }, []);
 
-    const handleCaptureNew = useCallback(async (screenshot: string, newFaceName: string) => {
+    const handleCaptureNew = useCallback(async (screenshot: string, newFaceName: string, code: string) => {
         setLoading(true);
         try {
             const response = await axios.post<CaptureResponse>(`${API_URL}/capture`, {
                 image: screenshot,
-                name: newFaceName
-            });
-            console.log('Face added:', response.data);
+                name: newFaceName,
+                employeeCode: code
+            }, { withCredentials: true });
             setResultManually(response.data);
             setResultRecognize(null);
+            setNewFaceName('');
+            setEmployeeCode('');
         } catch (error: unknown) {
             console.error('Error uploading image:', error);
+            if (axios.isAxiosError(error) && error.response?.status === 401) onUnauthorized();
             alert(getErrorMessage(error));
         } finally {
             setLoading(false);
         }
-    }, [getErrorMessage]);
+    }, [getErrorMessage, onUnauthorized]);
 
     const handleCaptureRecognize = useCallback(async (screenshot: string) => {
         setLoading(true);
@@ -107,13 +120,13 @@ export const WebCaptureV2: React.FC = () => {
         }
         const screenshot = webcamRef.current?.getScreenshot();
         if (screenshot && captureMode === 'new') {
-            handleCaptureNew(screenshot, newFaceName);
+            handleCaptureNew(screenshot, newFaceName, employeeCode);
         } else if (screenshot && captureMode === 'recognize') {
             handleCaptureRecognize(screenshot);
         } else {
             alert('Error capturing image');
         }
-    }, [cameraReady, captureMode, handleCaptureNew, handleCaptureRecognize, newFaceName]);
+    }, [cameraReady, captureMode, employeeCode, handleCaptureNew, handleCaptureRecognize, newFaceName]);
 
     return (
         <div className="webcam-container">
@@ -164,7 +177,7 @@ export const WebCaptureV2: React.FC = () => {
                             <div className="result-details">
                                 <h3>Face Added</h3>
                                 <p className="result-label">{resultManually.name}</p>
-                                <p className="result-sub">ID: {resultManually.image_id}</p>
+                                <p className="result-sub">Legajo: {resultManually.employeeCode}</p>
                             </div>
                         ) : null}
                     </div>
@@ -173,8 +186,11 @@ export const WebCaptureV2: React.FC = () => {
                             <>
                                 <p className="result-title">Recognition Results</p>
                                 <p className="result-label">
-                                    {recognitionResult?.subjects?.[0]?.subject ?? 'Unknown'}
+                                    {recognitionResult?.subjects?.[0]?.displayName ?? recognitionResult?.subjects?.[0]?.subject ?? 'Unknown'}
                                 </p>
+                                {recognitionResult?.subjects?.[0]?.employeeCode && (
+                                    <p className="result-sub">Legajo: {recognitionResult.subjects[0].employeeCode}</p>
+                                )}
                                 <div className="result-metrics">
                                     <div>
                                         <span className="metric-label">Similarity</span>
@@ -217,16 +233,18 @@ export const WebCaptureV2: React.FC = () => {
 
             <div className="controls-section">
                 <div className="mode-selector">
-                    <label className={captureMode === 'new' ? 'active' : ''}>
-                        <input 
-                            type="radio" 
-                            name="captureMode" 
-                            value="new"
-                            checked={captureMode === 'new'}
-                            onChange={() => setCaptureMode('new')}
-                        />
-                        <span>🆕 New Face</span>
-                    </label>
+                    {canManagePeople && (
+                        <label className={captureMode === 'new' ? 'active' : ''}>
+                            <input
+                                type="radio"
+                                name="captureMode"
+                                value="new"
+                                checked={captureMode === 'new'}
+                                onChange={() => setCaptureMode('new')}
+                            />
+                            <span>➕ Alta con cámara</span>
+                        </label>
+                    )}
                     <label className={captureMode === 'recognize' ? 'active' : ''}>
                         <input 
                             type="radio" 
@@ -240,13 +258,22 @@ export const WebCaptureV2: React.FC = () => {
                 </div>
 
                 {captureMode === 'new' ? (
-                    <input 
-                        type="text" 
-                        placeholder="Agrega una nueva cara a la base de datos." 
-                        className="input-new-face"
-                        value={newFaceName}
-                        onChange={(e) => setNewFaceName(e.target.value)}
+                    <div className="new-face-fields">
+                        <input
+                            type="text"
+                            placeholder="Nombre completo"
+                            className="input-new-face"
+                            value={newFaceName}
+                            onChange={(e) => setNewFaceName(e.target.value)}
                         />
+                        <input
+                            type="text"
+                            placeholder="Legajo (ej. EMP-001)"
+                            className="input-new-face"
+                            value={employeeCode}
+                            onChange={(e) => setEmployeeCode(e.target.value.toUpperCase())}
+                        />
+                    </div>
                 ) : (
                     <p className="mode-description">Reconoce una cara existente en la base de datos.</p>
                 )
@@ -255,7 +282,7 @@ export const WebCaptureV2: React.FC = () => {
                 <button 
                     onClick={capture} 
                     className="capture-button"
-                    disabled={loading || !!cameraError}
+                    disabled={loading || !!cameraError || (captureMode === 'new' && (!newFaceName.trim() || !employeeCode.trim()))}
                 >
                     {loading ? '⏳ Processing...' : '📸 Capture Photo'}
                 </button>

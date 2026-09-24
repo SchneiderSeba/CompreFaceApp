@@ -1,11 +1,14 @@
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Script para limpiar la carpeta TempImage cada 5 minutos
  */
 export function cleanTempFolder() {
-  const folderPath = "./TempImage";
+  const folderPath = path.join(__dirname, "TempImage");
   const msInFiveMinutes = 5 * 60 * 1000; // 300,000 ms
 
   // Verificar si la carpeta existe antes de intentar leerla
@@ -47,6 +50,7 @@ export function cleanTempFolder() {
 const fiveMin = 5 * 60 * 1000;
 
 // Ejecutar cada 5 minutos (300,000 milisegundos)
-setInterval(cleanTempFolder, fiveMin);
+const cleanupInterval = setInterval(cleanTempFolder, fiveMin);
+cleanupInterval.unref();
 
 // Ejecutar una vez al arrancar el servidor

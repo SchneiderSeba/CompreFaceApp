@@ -1,4 +1,194 @@
 .manual-section {
-  margin-top: 30px;
-  padding: 15px;
+  width: min(920px, calc(100% - 32px));
+  margin: 24px auto 64px;
+  padding: 28px;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 24px;
+  background: rgba(10, 17, 14, 0.82);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(18px);
+  text-align: left;
+}
+
+.manual-heading,
+.employee-list-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.manual-heading h2,
+.employee-list-heading h3 {
+  margin: 0;
+  color: #f4fff7;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  color: #70dc91;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.admin-badge,
+.employee-list-heading span {
+  padding: 6px 10px;
+  border: 1px solid rgba(112, 220, 145, 0.3);
+  border-radius: 999px;
+  background: rgba(112, 220, 145, 0.1);
+  color: #9ef0b7;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.manual-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr);
+  gap: 28px;
+  margin-top: 24px;
+}
+
+.employee-form {
+  display: grid;
+  gap: 16px;
+}
+
+.employee-form label {
+  display: grid;
+  gap: 7px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.employee-form input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  outline: none;
+  background: rgba(255, 255, 255, 0.055);
+  color: #fff;
+  font: inherit;
+}
+
+.employee-form input:focus {
+  border-color: rgba(112, 220, 145, 0.8);
+  box-shadow: 0 0 0 3px rgba(112, 220, 145, 0.12);
+}
+
+.file-field input {
+  padding: 9px;
+}
+
+.file-field input::file-selector-button {
+  margin-right: 12px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(112, 220, 145, 0.14);
+  color: #b7f5ca;
+  cursor: pointer;
+}
+
+.manual-preview {
+  width: 100%;
+  max-height: 230px;
+  border-radius: 14px;
+  object-fit: cover;
+}
+
+.primary-action {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.form-message {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.form-message--error {
+  border: 1px solid rgba(255, 102, 102, 0.3);
+  background: rgba(255, 80, 80, 0.08);
+  color: #ffaaaa;
+}
+
+.form-message--success {
+  border: 1px solid rgba(112, 220, 145, 0.3);
+  background: rgba(112, 220, 145, 0.08);
+  color: #a9efbe;
+}
+
+.employee-list-panel {
+  min-height: 280px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.employee-list {
+  display: grid;
+  gap: 9px;
+  max-height: 390px;
+  margin: 16px 0 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.employee-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.employee-avatar {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #2f8f50, #65ca83);
+  color: white;
+  font-weight: 800;
+}
+
+.employee-list strong,
+.employee-list small {
+  display: block;
+}
+
+.employee-list strong {
+  color: #fff;
+  font-size: 14px;
+}
+
+.employee-list small,
+.empty-employees {
+  color: rgba(255, 255, 255, 0.52);
+}
+
+@media (max-width: 760px) {
+  .manual-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .manual-section {
+    width: calc(100% - 20px);
+    padding: 20px;
+  }
 }

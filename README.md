@@ -3,7 +3,7 @@
 # 🧠 FaceApp
 
 <p align="center">
-   <img src="https://img.shields.io/badge/Node.js-18+-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js"/>
+   <img src="https://img.shields.io/badge/Node.js-22.5+-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js"/>
    <img src="https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express"/>
    <img src="https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=white" alt="React"/>
    <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite"/>
@@ -82,7 +82,7 @@
 <tr>
 <td align="center" width="96">
 <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nodejs/nodejs-original.svg" width="48" height="48" alt="Node.js" />
-<br>Node.js 18+
+<br>Node.js 22.5+
 </td>
 <td align="center" width="96">
 <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/express/express-original.svg" width="48" height="48" alt="Express" />
@@ -90,7 +90,7 @@
 </td>
 <td align="center" width="96">
 <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg" width="48" height="48" alt="React" />
-<br>React 18
+<br>React 19
 </td>
 <td align="center" width="96">
 <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg" width="48" height="48" alt="TypeScript" />
@@ -117,10 +117,11 @@
 |:----------:|:---:|
 | **Node.js + Express** | Backend y API REST |
 | **CompreFace** | Motor de reconocimiento facial con IA |
-| **React 18 + Vite** | Interfaz de usuario moderna y rápida |
+| **React 19 + Vite** | Interfaz de usuario moderna y rápida |
 | **TypeScript** | Tipado estricto en frontend |
 | **Docker Compose** | Orquestación de servicios |
 | **React Webcam** | Captura de imágenes desde navegador |
+| **SQLite** | Usuarios, roles y sesiones administrativas |
 
 </div>
 
@@ -132,6 +133,8 @@
 FaceApp/
 ├── index.js                    # Entry point del backend
 ├── clientCompreFace.js         # Cliente para consumir CompreFace API
+├── database.js                 # SQLite: administradores, empleados y sesiones
+├── auth.js                     # Cookies de sesión y autorización por rol
 ├── faceRecognice.js            # Lógica de reconocimiento facial
 ├── package.json                # Dependencias del backend
 ├── railway.toml                # Configuración de despliegue
@@ -158,16 +161,18 @@ FaceApp/
 
 ## 🔐 Seguridad y Privacidad
 
-### Datos Locales
-FaceApp procesa todas las imágenes de forma local y privada:
+### Procesamiento de imágenes
+FaceApp envía las capturas al CompreFace auto-hosteado del proyecto:
 
-- **CompreFace auto-hosteado** - Motor de IA ejecutado localmente con Docker
-- **Sin envío a terceros** - Las imágenes solo se procesan en tu infraestructura
+- **CompreFace auto-hosteado** - Motor de IA desplegado en el VPS privado del proyecto
+- **Sin proveedores biométricos externos** - Las imágenes solo se procesan en la infraestructura configurada
 - **Almacenamiento temporal** - Las imágenes se guardan localmente
 
 ### Configuración
 - **Variables de entorno** - Claves y endpoints configurables en `.env`
-- **API protegida** - Solo usuarios con acceso al frontend pueden usar la app
+- **Clave aislada** - La credencial de CompreFace permanece en el backend y no se envía al navegador
+- **Acceso por rol** - Solo administradores autenticados pueden registrar o listar empleados
+- **Sesiones seguras** - Cookies HTTP-only con vencimiento y contraseñas derivadas mediante scrypt
 - **Control total** - Tú decides dónde y cómo se almacenan los datos
 
 ---
@@ -175,8 +180,12 @@ FaceApp procesa todas las imágenes de forma local y privada:
 ## 🧮 Funcionalidades técnicas destacadas
 
 ### API Endpoints
-- **POST `/capture`** - Inscribe un nuevo rostro con nombre asociado
-  - Body: `{ image: string (base64), name: string }`
+- **POST `/api/auth/login`** - Inicia una sesión administrativa
+- **GET `/api/auth/me`** - Recupera la sesión activa
+- **POST `/api/auth/logout`** - Cierra e invalida la sesión
+- **GET `/api/employees`** - Lista empleados (solo admin)
+- **POST `/api/employees`** / **POST `/capture`** - Registra empleado y rostro (solo admin)
+  - Body: `{ image: string (base64), name: string, employeeCode: string }`
   - Response: Detalles del rostro agregado con `image_id`
   
 - **POST `/recognize`** - Busca coincidencias en la galería de rostros
@@ -189,6 +198,7 @@ flowchart LR
     A[WebCam en navegador] -->|Foto base64| B[Backend Node.js]
     B -->|Forwarding| C[CompreFace API]
     C -->|Resultado JSON| B -->|Payload normalizado| A
+    B <-->|Usuarios, roles y sesiones| D[(SQLite)]
 ```
 
 ### Captura de Imágenes
@@ -276,8 +286,8 @@ graph TD
 ### 1️⃣ Clonar el repositorio
 
 ```bash
-git clone https://github.com/SchneiderSeba/FaceApp.git
-cd FaceApp
+git clone https://github.com/SchneiderSeba/CompreFaceApp.git
+cd CompreFaceApp
 ```
 
 ### 2️⃣ Configurar variables de entorno
@@ -286,9 +296,18 @@ Crear archivo `.env` en la raíz:
 
 ```env
 PORT=3000
-COMPREFACE_URL=http://localhost:8000
-COMPREFACE_KEY=tu_api_key_aqui
+COMPREFACE_URL=https://compreface.schneidersebastian.com
+COMPREFACE_PORT=443
+COMPRE_FACE_API_KEY=tu_api_key_aqui
+COMPREFACE_API_KEY_ENV=COMPRE_FACE_API_KEY
+CLIENT_ORIGIN=http://localhost:3000,http://localhost:5173
+DATABASE_PATH=./data/faceapp.sqlite
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=una_contraseña_segura_de_12_caracteres_o_más
+ADMIN_DISPLAY_NAME=Administrador
 ```
+
+> En producción, configura `DATABASE_PATH` dentro de un volumen persistente (por ejemplo `/data/faceapp.sqlite`). Si cambias `ADMIN_USERNAME`, `ADMIN_PASSWORD` o `ADMIN_DISPLAY_NAME`, el administrador se actualiza en el siguiente arranque; cambiar la contraseña invalida sus sesiones existentes.
 
 Crear archivo `FrontEnd/faceApp/.env`:
 
@@ -304,7 +323,9 @@ POSTGRES_PASSWORD=password
 POSTGRES_DB=facerecognition
 ```
 
-### 3️⃣ Levantar CompreFace con Docker
+### 3️⃣ Comprobar CompreFace
+
+El despliegue principal usa el CompreFace del VPS configurado arriba. Para ejecutar un stack local alternativo:
 
 ```bash
 cd CompreFaceDok
