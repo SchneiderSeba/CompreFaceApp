@@ -6,7 +6,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const configuredPath = process.env.DATABASE_PATH || path.join(__dirname, 'data', 'faceapp.sqlite');
+const defaultDataDirectory = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, 'data');
+const configuredPath = process.env.DATABASE_PATH || path.join(defaultDataDirectory, 'faceapp.sqlite');
 
 if (configuredPath !== ':memory:') {
   fs.mkdirSync(path.dirname(path.resolve(configuredPath)), { recursive: true });
@@ -75,13 +76,26 @@ function publicUser(row) {
   };
 }
 
+export const adminConfiguration = {
+  configured: false,
+  issue: null
+};
+
 function seedAdmin() {
   const username = process.env.ADMIN_USERNAME?.trim();
   const password = process.env.ADMIN_PASSWORD;
   const displayName = process.env.ADMIN_DISPLAY_NAME?.trim() || 'Administrador';
 
-  if (!username || !password || password.length < 12) {
-    throw new Error('Configura ADMIN_USERNAME y ADMIN_PASSWORD (mínimo 12 caracteres) para crear el administrador inicial');
+  if (!username || !password) {
+    adminConfiguration.issue = 'missing_credentials';
+    console.warn('⚠️ Administración deshabilitada: configura ADMIN_USERNAME y ADMIN_PASSWORD en el entorno.');
+    return;
+  }
+
+  if (password.length < 12) {
+    adminConfiguration.issue = 'weak_password';
+    console.warn('⚠️ Administración deshabilitada: ADMIN_PASSWORD debe tener al menos 12 caracteres.');
+    return;
   }
 
   const existingAdmin = database.prepare("SELECT * FROM users WHERE role = 'admin' LIMIT 1").get();
@@ -96,6 +110,8 @@ function seedAdmin() {
       existingAdmin.id
     );
     if (passwordChanged) database.prepare('DELETE FROM sessions WHERE user_id = ?').run(existingAdmin.id);
+    adminConfiguration.configured = true;
+    adminConfiguration.issue = null;
     return;
   }
 
@@ -103,6 +119,8 @@ function seedAdmin() {
     INSERT INTO users (username, password_hash, display_name, role)
     VALUES (?, ?, ?, 'admin')
   `).run(username, hashPassword(password), displayName);
+  adminConfiguration.configured = true;
+  adminConfiguration.issue = null;
 }
 
 seedAdmin();

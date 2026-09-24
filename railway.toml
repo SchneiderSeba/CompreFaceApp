@@ -1,14 +1,10 @@
 [build]
 builder = "RAILPACK"
+buildCommand = "npm ci --omit=dev"
 
-[[services]]
-name = "backend"
-root = "."
-buildCommand = "npm install"
+[deploy]
 startCommand = "npm start"
-
-[[services]]
-name = "frontend"
-root = "FrontEnd/faceApp"
-buildCommand = "npm install && npm run build"
-startCommand = "npm run preview -- --host 0.0.0.0"
+healthcheckPath = "/api/health/live"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

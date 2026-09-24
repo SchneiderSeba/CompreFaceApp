@@ -300,7 +300,7 @@ COMPREFACE_URL=https://compreface.schneidersebastian.com
 COMPREFACE_PORT=443
 COMPRE_FACE_API_KEY=tu_api_key_aqui
 COMPREFACE_API_KEY_ENV=COMPRE_FACE_API_KEY
-CLIENT_ORIGIN=http://localhost:3000,http://localhost:5173
+CLIENT_ORIGIN=http://localhost:3000,http://localhost:5173,https://comprefacefront-production.up.railway.app
 DATABASE_PATH=./data/faceapp.sqlite
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=una_contraseña_segura_de_12_caracteres_o_más
@@ -308,6 +308,22 @@ ADMIN_DISPLAY_NAME=Administrador
 ```
 
 > En producción, configura `DATABASE_PATH` dentro de un volumen persistente (por ejemplo `/data/faceapp.sqlite`). Si cambias `ADMIN_USERNAME`, `ADMIN_PASSWORD` o `ADMIN_DISPLAY_NAME`, el administrador se actualiza en el siguiente arranque; cambiar la contraseña invalida sus sesiones existentes.
+
+### Variables del backend en Railway
+
+Railway no lee el archivo `.env` local. Configura estas variables en el servicio del backend:
+
+- `ADMIN_USERNAME`: nombre de acceso del administrador.
+- `ADMIN_PASSWORD`: contraseña de al menos 12 caracteres.
+- `ADMIN_DISPLAY_NAME`: nombre que se muestra en la interfaz.
+- `COMPRE_FACE_API_KEY`: clave del servicio de reconocimiento.
+- `COMPREFACE_URL`: `https://compreface.schneidersebastian.com`.
+- `COMPREFACE_PORT`: `443`.
+- `CLIENT_ORIGIN`: URL pública del frontend (se pueden separar varias con comas).
+
+Para conservar usuarios y sesiones entre despliegues, monta un volumen de Railway. La aplicación usa automáticamente `RAILWAY_VOLUME_MOUNT_PATH`; también se puede definir `DATABASE_PATH` de forma explícita, por ejemplo `/data/faceapp.sqlite`.
+
+Si faltan las credenciales administrativas o la clave de CompreFace, el proceso permanece activo y la funcionalidad afectada responde con `503`. El endpoint `/api/health/live` comprueba únicamente que el backend esté funcionando; `/api/health` informa además el estado de CompreFace y del administrador.
 
 Crear archivo `FrontEnd/faceApp/.env`:
 

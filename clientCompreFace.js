@@ -1,7 +1,8 @@
 import { CompreFace } from '@exadel/compreface-js-sdk';
 import 'dotenv/config';
 
-const configuredUrl = process.env.COMPREFACE_URL || 'http://localhost';
+const configuredUrl = process.env.COMPREFACE_URL
+  || (process.env.NODE_ENV === 'production' ? 'https://compreface.schneidersebastian.com' : 'http://localhost');
 const parsedUrl = new URL(configuredUrl);
 const server = `${parsedUrl.protocol}//${parsedUrl.hostname}`;
 const defaultPort = parsedUrl.protocol === 'https:' ? 443 : 8000;

@@ -5,9 +5,16 @@ import helmet from 'helmet';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { addCapturedFace, checkRecognitionService, deleteCapturedFace, recognizFace } from './faceRecognice.js';
+import {
+  addCapturedFace,
+  checkRecognitionService,
+  deleteCapturedFace,
+  recognitionConfiguration,
+  recognizFace
+} from './faceRecognice.js';
 import { cleanTempFolder } from './cleanTempImg.js';
 import {
+  adminConfiguration,
   createEmployee,
   createSession,
   deleteSession,
@@ -28,7 +35,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const clientDistPath = path.resolve(__dirname, 'FrontEnd', 'faceApp', 'dist');
 const shouldServeClient = process.env.SERVE_CLIENT === 'true' || fs.existsSync(clientDistPath);
-const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:3000,http://localhost:5173')
+const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:3000,http://localhost:5173,https://comprefacefront-production.up.railway.app')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
@@ -48,6 +55,8 @@ const cspDirectives = {
   "connect-src": connectSources,
   "img-src": ["'self'", 'data:', 'blob:']
 };
+
+if (isProduction) app.set('trust proxy', 1);
 
 app.use(cors({
   credentials: true,
@@ -70,14 +79,20 @@ app.use(
 const loginAttempts = new Map();
 
 function setSessionCookie(res, token, maxAgeSeconds = 8 * 60 * 60) {
-  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  const crossSite = isProduction ? '; SameSite=None; Secure' : '; SameSite=Lax';
   res.setHeader(
     'Set-Cookie',
-    `${SESSION_COOKIE}=${encodeURIComponent(token)}; HttpOnly; Path=/; Max-Age=${maxAgeSeconds}; SameSite=Lax${secure}`
+    `${SESSION_COOKIE}=${encodeURIComponent(token)}; HttpOnly; Path=/; Max-Age=${maxAgeSeconds}${crossSite}`
   );
 }
 
 app.post('/api/auth/login', (req, res) => {
+  if (!adminConfiguration.configured) {
+    return res.status(503).json({
+      error: 'El acceso administrativo todavía no está configurado en el servidor'
+    });
+  }
+
   const key = req.ip || 'unknown';
   const attempt = loginAttempts.get(key);
   if (attempt && attempt.blockedUntil > Date.now()) {
@@ -213,8 +228,12 @@ app.get('/api/health', async (_req, res) => {
   try {
     const { subjects } = await checkRecognitionService();
     res.json({
-      status: 'ok',
-      services: { backend: 'ok', compreface: 'ok' },
+      status: adminConfiguration.configured ? 'ok' : 'degraded',
+      services: {
+        backend: 'ok',
+        compreface: 'ok',
+        admin: adminConfiguration.configured ? 'ok' : 'not_configured'
+      },
       subjects,
       timestamp: new Date().toISOString()
     });
@@ -222,10 +241,18 @@ app.get('/api/health', async (_req, res) => {
     console.error('CompreFace health check failed:', error.message);
     res.status(503).json({
       status: 'degraded',
-      services: { backend: 'ok', compreface: 'unavailable' },
+      services: {
+        backend: 'ok',
+        compreface: recognitionConfiguration.configured ? 'unavailable' : 'not_configured',
+        admin: adminConfiguration.configured ? 'ok' : 'not_configured'
+      },
       timestamp: new Date().toISOString()
     });
   }
+});
+
+app.get('/api/health/live', (_req, res) => {
+  res.json({ status: 'ok', service: 'backend', timestamp: new Date().toISOString() });
 });
 
 if (shouldServeClient) {

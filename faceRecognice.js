@@ -12,13 +12,26 @@ const imageDirectory = path.join(__dirname, "image");
 const apiKeyVariable = process.env.COMPREFACE_API_KEY_ENV || 'COMPRE_FACE_API_KEY';
 const apiKey = process.env[apiKeyVariable];
 
-if (!apiKey) {
-  throw new Error(`Falta configurar la clave indicada por COMPREFACE_API_KEY_ENV (${apiKeyVariable})`);
+const recognitionService = apiKey ? compreFace.initFaceRecognitionService(apiKey) : null;
+
+export const recognitionConfiguration = {
+  configured: Boolean(apiKey),
+  apiKeyVariable
+};
+
+if (!recognitionConfiguration.configured) {
+  console.warn(`⚠️ Reconocimiento deshabilitado: falta configurar ${apiKeyVariable}.`);
 }
 
-const recognitionService = compreFace.initFaceRecognitionService(apiKey);
+function getRecognitionService() {
+  if (recognitionService) return recognitionService;
+  const error = new Error(`El reconocimiento no está configurado: falta ${apiKeyVariable}`);
+  error.statusCode = 503;
+  throw error;
+}
 
 export async function checkRecognitionService() {
+  getRecognitionService();
   const response = await fetch(`${compreFaceBaseUrl}/api/v1/recognition/subjects`, {
     headers: { 'x-api-key': apiKey },
     signal: AbortSignal.timeout(10000)
@@ -64,7 +77,7 @@ function userFacingError(message, statusCode = 422) {
 
 // Función para agregar una cara desde imagen base64 capturada del frontend
 export async function addCapturedFace(base64Image, name) {
-  const faceCollection = recognitionService.getFaceCollection();
+  const faceCollection = getRecognitionService().getFaceCollection();
   const normalizedName = typeof name === 'string' ? name.trim() : '';
   if (!normalizedName) {
     throw new Error('El nombre es obligatorio');
@@ -109,7 +122,7 @@ export async function addCapturedFace(base64Image, name) {
 
 export async function deleteCapturedFace(imageId) {
   if (!imageId) return;
-  await recognitionService.getFaceCollection().delete(imageId);
+  await getRecognitionService().getFaceCollection().delete(imageId);
 }
 
 export async function recognizFace(base64Image) {
@@ -124,7 +137,7 @@ export async function recognizFace(base64Image) {
     fs.writeFileSync(tempPath, imageBuffer);
 
 
-    const response = await recognitionService.recognize(tempPath, {
+    const response = await getRecognitionService().recognize(tempPath, {
       limit: 1,
       det_prob_threshold: 0.85
     });
@@ -152,7 +165,7 @@ export async function recognizFace(base64Image) {
 }
 
 export async function addNewFaceToPullManualy() {
-  let faceCollection = recognitionService.getFaceCollection();
+  let faceCollection = getRecognitionService().getFaceCollection();
 
   let name = encodeURIComponent('Sebastian');  //TODO - cAMBIAR A RECEPCION DE VARIABLE DE NOMBRE
   
