@@ -109,6 +109,16 @@ test('recognize remains available without login', async () => {
   assert.deepEqual(await response.json(), { error: 'No image provided' });
 });
 
+test('recognize rejects unsupported image data before contacting CompreFace', async () => {
+  const response = await fetch(`${baseUrl}/recognize`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ image: 'not-an-image' })
+  });
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), { error: 'El formato de la imagen no es válido' });
+});
+
 test('allows preflight requests from the production custom domain', async () => {
   const origin = 'https://facerecognize.schneidersebastian.com';
   const response = await fetch(`${baseUrl}/recognize`, {

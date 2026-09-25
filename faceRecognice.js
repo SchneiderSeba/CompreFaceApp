@@ -1,72 +1,35 @@
-import { compreFace, compreFaceBaseUrl } from "./clientCompreFace.js";
-import fs from "fs";
-import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
- 
-dotenv.config();
+import { compreFaceBaseUrl } from './clientCompreFace.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import 'dotenv/config';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const tempDirectory = path.join(__dirname, "TempImage");
-const imageDirectory = path.join(__dirname, "image");
+const imageDirectory = path.join(__dirname, 'image');
 const apiKeyVariable = process.env.COMPREFACE_API_KEY_ENV || 'COMPRE_FACE_API_KEY';
 const apiKey = process.env[apiKeyVariable];
-
-const recognitionService = apiKey ? compreFace.initFaceRecognitionService(apiKey) : null;
+const configuredThreshold = Number(process.env.COMPREFACE_DETECTION_THRESHOLD || 0.6);
+const detectionThreshold = Number.isFinite(configuredThreshold)
+  && configuredThreshold >= 0
+  && configuredThreshold <= 1
+  ? configuredThreshold
+  : 0.6;
 
 export const recognitionConfiguration = {
   configured: Boolean(apiKey),
-  apiKeyVariable
+  apiKeyVariable,
+  detectionThreshold
 };
 
 if (!recognitionConfiguration.configured) {
   console.warn(`⚠️ Reconocimiento deshabilitado: falta configurar ${apiKeyVariable}.`);
 }
 
-function getRecognitionService() {
-  if (recognitionService) return recognitionService;
+function requireApiKey() {
+  if (apiKey) return apiKey;
   const error = new Error(`El reconocimiento no está configurado: falta ${apiKeyVariable}`);
   error.statusCode = 503;
   throw error;
-}
-
-export async function checkRecognitionService() {
-  getRecognitionService();
-  const response = await fetch(`${compreFaceBaseUrl}/api/v1/recognition/subjects`, {
-    headers: { 'x-api-key': apiKey },
-    signal: AbortSignal.timeout(10000)
-  });
-
-  if (!response.ok) {
-    throw new Error(`CompreFace respondió con HTTP ${response.status}`);
-  }
-
-  const body = await response.json();
-  return { subjects: Array.isArray(body?.subjects) ? body.subjects.length : 0 };
-}
-
-function decodeBase64Image(base64Image) {
-  if (typeof base64Image !== 'string') {
-    throw new Error('La imagen debe enviarse como una cadena base64');
-  }
-
-  const match = base64Image.match(/^data:image\/(?:jpeg|jpg|png|webp);base64,([A-Za-z0-9+/=\s]+)$/);
-  if (!match) {
-    throw new Error('El formato de la imagen no es válido');
-  }
-
-  const imageBuffer = Buffer.from(match[1], 'base64');
-  if (imageBuffer.length === 0) {
-    throw new Error('La imagen está vacía');
-  }
-
-  return imageBuffer;
-}
-
-function removeTemporaryFile(tempPath) {
-  if (tempPath && fs.existsSync(tempPath)) {
-    fs.unlinkSync(tempPath);
-  }
 }
 
 function userFacingError(message, statusCode = 422) {
@@ -75,127 +38,184 @@ function userFacingError(message, statusCode = 422) {
   return error;
 }
 
-// Función para agregar una cara desde imagen base64 capturada del frontend
-export async function addCapturedFace(base64Image, name) {
-  const faceCollection = getRecognitionService().getFaceCollection();
-  const normalizedName = typeof name === 'string' ? name.trim() : '';
-  if (!normalizedName) {
-    throw new Error('El nombre es obligatorio');
+function decodeBase64Image(base64Image) {
+  if (typeof base64Image !== 'string') {
+    throw userFacingError('La imagen debe enviarse como una cadena base64', 400);
   }
 
-  const encodedName = encodeURIComponent(normalizedName);
-  let tempPath = null;
-  
+  const match = base64Image.match(/^data:image\/(jpeg|jpg|png|webp);base64,([A-Za-z0-9+/=\s]+)$/);
+  if (!match) {
+    throw userFacingError('El formato de la imagen no es válido', 400);
+  }
+
+  const format = match[1] === 'jpg' ? 'jpeg' : match[1];
+  const buffer = Buffer.from(match[2], 'base64');
+  if (buffer.length === 0) {
+    throw userFacingError('La imagen está vacía', 400);
+  }
+
+  return {
+    buffer,
+    mimeType: `image/${format}`,
+    extension: format === 'jpeg' ? 'jpg' : format
+  };
+}
+
+function summarizeUpstreamBody(body) {
+  if (body == null) return '';
+  const summary = typeof body === 'string' ? body : JSON.stringify(body);
+  return summary.slice(0, 500);
+}
+
+async function parseResponse(response) {
+  const text = await response.text();
+  if (!text) return null;
   try {
-    const imageBuffer = decodeBase64Image(base64Image);
-    
-    // Guardar temporalmente la imagen
-    fs.mkdirSync(tempDirectory, { recursive: true });
-    tempPath = path.join(tempDirectory, `temp_add_${Date.now()}.jpg`);
-    fs.writeFileSync(tempPath, imageBuffer);
-    
-    // Agregar la cara a la colección usando el path del archivo
-    const response = await faceCollection.add(tempPath, encodedName);
-    console.log("Face added from capture:", response);
-    
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+async function requestCompreFace(endpoint, { method = 'GET', image, params } = {}) {
+  const key = requireApiKey();
+  const url = new URL(endpoint, `${compreFaceBaseUrl}/`);
+
+  for (const [name, value] of Object.entries(params || {})) {
+    if (value !== undefined && value !== null) url.searchParams.set(name, String(value));
+  }
+
+  const headers = { 'x-api-key': key };
+  let body;
+  if (image) {
+    body = new FormData();
+    body.append(
+      'file',
+      new Blob([image.buffer], { type: image.mimeType }),
+      `capture.${image.extension}`
+    );
+  }
+
+  const response = await fetch(url, {
+    method,
+    headers,
+    body,
+    signal: AbortSignal.timeout(30000)
+  });
+  const responseBody = await parseResponse(response);
+
+  if (!response.ok) {
+    const error = new Error(`CompreFace respondió con HTTP ${response.status}`);
+    error.upstreamStatus = response.status;
+    error.upstreamBody = responseBody;
+    throw error;
+  }
+
+  return responseBody;
+}
+
+function logCompreFaceError(context, error) {
+  const detail = summarizeUpstreamBody(error.upstreamBody);
+  console.error(
+    `${context}:`,
+    error.message,
+    detail ? `- ${detail}` : ''
+  );
+}
+
+export async function checkRecognitionService() {
+  const body = await requestCompreFace('/api/v1/recognition/subjects');
+  return { subjects: Array.isArray(body?.subjects) ? body.subjects.length : 0 };
+}
+
+export async function addCapturedFace(base64Image, name) {
+  const normalizedName = typeof name === 'string' ? name.trim() : '';
+  if (!normalizedName) throw userFacingError('El nombre es obligatorio', 400);
+
+  try {
+    const image = decodeBase64Image(base64Image);
+    const response = await requestCompreFace('/api/v1/recognition/faces', {
+      method: 'POST',
+      image,
+      params: {
+        subject: normalizedName,
+        det_prob_threshold: detectionThreshold
+      }
+    });
+
     return {
       success: true,
-      name: decodeURIComponent(encodedName),
+      name: normalizedName,
       image_id: response.image_id,
       subject: response.subject
     };
   } catch (error) {
-    console.error('Error adding captured face:', error.message);
-    
-    if (error.response?.status === 400) {
-      throw userFacingError('No se detectó un rostro en la imagen. Asegúrate de que tu cara esté bien iluminada y visible.');
+    logCompreFaceError('Error adding captured face', error);
+    if (error.upstreamStatus === 400) {
+      throw userFacingError('No se detectó un rostro con suficiente claridad. Acércate a la cámara y mejora la iluminación.');
     }
     throw error;
-  } finally {
-    try {
-      removeTemporaryFile(tempPath);
-    } catch (cleanupError) {
-      console.error('Error cleaning up temp file:', cleanupError);
-    }
   }
 }
 
 export async function deleteCapturedFace(imageId) {
   if (!imageId) return;
-  await getRecognitionService().getFaceCollection().delete(imageId);
+  await requestCompreFace(`/api/v1/recognition/faces/${encodeURIComponent(imageId)}`, {
+    method: 'DELETE'
+  });
 }
 
 export async function recognizFace(base64Image) {
-  let tempPath = null;
-
   try {
-    const imageBuffer = decodeBase64Image(base64Image);
-
-    fs.mkdirSync(tempDirectory, { recursive: true });
-
-    tempPath = path.join(tempDirectory, `temp_rec_${Date.now()}.jpg`);
-    fs.writeFileSync(tempPath, imageBuffer);
-
-
-    const response = await getRecognitionService().recognize(tempPath, {
-      limit: 1,
-      det_prob_threshold: 0.85
+    const image = decodeBase64Image(base64Image);
+    const response = await requestCompreFace('/api/v1/recognition/recognize', {
+      method: 'POST',
+      image,
+      params: {
+        limit: 1,
+        det_prob_threshold: detectionThreshold
+      }
     });
 
     if (!response?.result?.length) {
       throw userFacingError('No se pudo reconocer un rostro en la imagen. Intenta acercarte o mejora la iluminación.');
     }
 
-    console.log("Recognition result:", response);
     return response;
   } catch (error) {
-    console.error('Error recognizing face:', error.message);
-
-    if (error.response?.status === 400) {
-      throw userFacingError('No se pudo reconocer un rostro en la imagen. Intenta acercarte o mejora la iluminación.');
+    logCompreFaceError('Error recognizing face', error);
+    if (error.upstreamStatus === 400) {
+      throw userFacingError('No se detectó un rostro con suficiente claridad. Acércate a la cámara y mejora la iluminación.');
     }
     throw error;
-  } finally {
-    try {
-      removeTemporaryFile(tempPath);
-    } catch (cleanupError) {
-      console.error('Error cleaning up recognition temp file:', cleanupError);
-    }
   }
 }
 
 export async function addNewFaceToPullManualy() {
-  let faceCollection = getRecognitionService().getFaceCollection();
+  const imageFiles = fs.readdirSync(imageDirectory);
+  if (imageFiles.length === 0) throw new Error('No hay imágenes en la carpeta image');
 
-  let name = encodeURIComponent('Sebastian');  //TODO - cAMBIAR A RECEPCION DE VARIABLE DE NOMBRE
-  
-  const imageToAdd = fs.readdirSync(imageDirectory);
+  const imagePath = path.join(imageDirectory, imageFiles[0]);
+  const extension = path.extname(imagePath).slice(1).toLowerCase();
+  const format = extension === 'jpg' ? 'jpeg' : extension;
+  const response = await requestCompreFace('/api/v1/recognition/faces', {
+    method: 'POST',
+    image: {
+      buffer: fs.readFileSync(imagePath),
+      mimeType: `image/${format}`,
+      extension
+    },
+    params: {
+      subject: 'Sebastian',
+      det_prob_threshold: detectionThreshold
+    }
+  });
 
-  if (imageToAdd.length === 0) {
-    throw new Error('No hay imágenes en la carpeta image');
-  }
-
-  console.log("Image to add:", imageToAdd);
-
-  try {
-    const addedImagePath = path.join(imageDirectory, imageToAdd[0]);
-    const response = await faceCollection.add(addedImagePath, name);
-    console.log("Face added:", response);
-
-    let addedImageId = response.image_id;
-    let addedImageSubject = response.subject;
-    let addedImageName = decodeURIComponent(name);
-    let imageData = fs.readFileSync(addedImagePath, { encoding: 'base64' });
-    
-    return {
-      success: true,
-      name: addedImageName,
-      image_id: addedImageId,
-      subject: addedImageSubject,
-      image: `data:image/jpeg;base64,${imageData}`
-    };
-  } catch (error) {
-    console.error('Error adding manual face:', error.message);
-    throw error;
-  }
+  return {
+    success: true,
+    name: 'Sebastian',
+    image_id: response.image_id,
+    subject: response.subject,
+    image: `data:image/${format};base64,${fs.readFileSync(imagePath, { encoding: 'base64' })}`
+  };
 }

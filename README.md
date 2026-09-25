@@ -298,6 +298,7 @@ Crear archivo `.env` en la raíz:
 PORT=3000
 COMPREFACE_URL=https://compreface.schneidersebastian.com
 COMPREFACE_PORT=443
+COMPREFACE_DETECTION_THRESHOLD=0.6
 COMPRE_FACE_API_KEY=tu_api_key_aqui
 COMPREFACE_API_KEY_ENV=COMPRE_FACE_API_KEY
 CLIENT_ORIGIN=http://localhost:3000,http://localhost:5173,https://comprefacefront-production.up.railway.app,https://facerecognize.schneidersebastian.com
@@ -319,6 +320,7 @@ Railway no lee el archivo `.env` local. Configura estas variables en el servicio
 - `COMPRE_FACE_API_KEY`: clave del servicio de reconocimiento.
 - `COMPREFACE_URL`: `https://compreface.schneidersebastian.com`.
 - `COMPREFACE_PORT`: `443`.
+- `COMPREFACE_DETECTION_THRESHOLD`: confianza mínima del detector; `0.6` funciona mejor con cámaras web y poca luz.
 - `CLIENT_ORIGIN`: URL pública del frontend (se pueden separar varias con comas).
 
 Para conservar usuarios y sesiones entre despliegues, monta un volumen de Railway. La aplicación usa automáticamente `RAILWAY_VOLUME_MOUNT_PATH`; también se puede definir `DATABASE_PATH` de forma explícita, por ejemplo `/data/faceapp.sqlite`.
