@@ -1,18 +1,21 @@
 
 .webcam-container {
-    min-height: 100vh;
-    padding: 40px 20px;
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+    padding: clamp(24px, 5vh, 52px) 0;
     display: flex;
     justify-content: center;
     align-items: center;
     flex-direction: column;
-    gap: 30px;
+    gap: clamp(22px, 4vh, 34px);
     position: relative;
 }
 
 .webcam-card {
-    width: 320px;
-    height: 450px;
+    width: min(100%, 340px);
+    height: clamp(440px, 58vh, 470px);
+    flex: 0 0 auto;
     overflow: visible;
     position: relative;
 }
@@ -28,7 +31,7 @@
 
 .webcam-video {
     width: 100%;
-    height: auto;
+    max-height: 255px;
     aspect-ratio: 4/3;
     border-radius: 16px;
     transform: scaleX(-1);
@@ -39,18 +42,23 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 20px;
+    gap: 18px;
+    width: min(100%, 360px);
+    min-width: 0;
     z-index: 10;
 }
 
 .mode-selector {
     display: flex;
     gap: 10px;
+    width: 100%;
     padding: 0;
 }
 
 .mode-selector label {
     position: relative;
+    flex: 1 1 0;
+    min-width: 0;
     cursor: pointer;
     transition: all 0.3s ease;
 }
@@ -62,8 +70,12 @@
 }
 
 .mode-selector label span {
-    display: block;
-    min-width: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-width: 0;
+    min-height: 48px;
     padding: 12px 20px;
     border: 1px solid rgba(255, 255, 255, 0.13);
     border-radius: 12px;
@@ -90,6 +102,7 @@
 
 .capture-button {
     width: min(100%, 310px);
+    min-height: 48px;
     margin: 0;
     padding: 12px 20px;
     background: linear-gradient(135deg, #399a5a, #5fc67e);
@@ -135,6 +148,7 @@
 }
 
 .camera-error {
+    width: 100%;
     max-width: 360px;
     text-align: center;
     line-height: 1.4;
@@ -154,7 +168,8 @@
 }
 
 .recognize-error {
-    max-width: auto;
+    width: 100%;
+    max-width: 100%;
     text-align: center;
     line-height: 1.4;
     font-size: 14px;
@@ -175,6 +190,7 @@
 
 .retry-camera-button {
     align-self: center;
+    min-height: 44px;
     padding: 8px 18px;
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.2);
@@ -230,32 +246,38 @@
 }
 
 .result-title {
+    margin: 10px 0 8px;
     font-size: 18px;
     font-weight: 700;
     color: #8ab6ff;
 }
 
 .result-label {
+    max-width: 100%;
     font-size: 16px;
     font-weight: 600;
     margin: 0;
+    overflow-wrap: anywhere;
 }
 
 .result-sub {
     margin: 2px 0 0;
     font-size: 13px;
     color: rgba(255, 255, 255, 0.7);
+    overflow-wrap: anywhere;
 }
 
 .result-metrics {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     justify-content: center;
-    gap: 22px;
+    gap: 14px;
     width: 100%;
+    margin-top: 8px;
 }
 
 .result-metrics > div {
-    min-width: 92px;
+    min-width: 0;
 }
 
 .metric-label {
@@ -269,7 +291,7 @@
 .metric-value {
     display: block;
     max-width: 100%;
-    font-size: 22px;
+    font-size: clamp(19px, 6vw, 22px);
     font-weight: 800;
     color: #fff;
     font-variant-numeric: tabular-nums;
@@ -286,6 +308,8 @@
     align-items: center;
     margin: 50px 5px 20px 5px;
     font-size: 14px;
+    line-height: 1.5;
+    text-align: center;
     color: rgba(255, 255, 255, 0.6);
 }
 
@@ -433,6 +457,7 @@
     background: rgba(255, 255, 255, 0.05);
     color: white;
     font-size: 15px;
+    min-height: 48px;
     outline: none;
     transition: all 0.3s ease;
 }
@@ -455,17 +480,18 @@
 }
 
 @media (max-width: 768px) {
+    .webcam-container {
+        justify-content: flex-start;
+        padding-block: 24px 12px;
+    }
+
     .webcam-card {
-        width: min(90vw, 320px);
+        width: min(100%, 330px);
         height: 450px;
-        max-width: 320px;
     }
 
     .mode-selector {
-        flex-direction: column;
         width: 100%;
-        max-width: 300px;
-        border-radius: 20px;
     }
 
     .mode-selector label span {
@@ -474,7 +500,11 @@
 
     .capture-button {
         width: 100%;
-        max-width: 300px;
+        max-width: none;
+    }
+
+    .input-new-face {
+        font-size: 16px;
     }
 
     .result-card {
@@ -490,5 +520,86 @@
         flex-direction: column;
         gap: 8px;
         text-align: center;
+    }
+}
+
+@media (max-width: 430px) {
+    .webcam-container {
+        gap: 22px;
+        padding-top: 20px;
+    }
+
+    .webcam-card {
+        height: 438px;
+    }
+
+    .webcam-card .reflective-card-content {
+        gap: 8px;
+        padding: 13px;
+    }
+
+    .mode-selector {
+        flex-direction: column;
+    }
+
+    .mode-selector label span {
+        padding-inline: 14px;
+    }
+
+    .result-placeholder {
+        margin-top: 38px;
+    }
+}
+
+@media (max-width: 350px) {
+    .webcam-card {
+        height: 420px;
+    }
+
+    .webcam-card .reflective-card-content {
+        padding: 11px;
+    }
+
+    .result-placeholder {
+        margin-top: 28px;
+        font-size: 13px;
+    }
+
+    .controls-section {
+        gap: 14px;
+    }
+}
+
+@media (min-width: 640px) and (max-height: 650px) and (orientation: landscape) {
+    .webcam-container {
+        min-height: 0;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        gap: clamp(28px, 6vw, 64px);
+        padding-block: 16px 8px;
+    }
+
+    .webcam-card {
+        width: min(42vw, 300px);
+        height: min(410px, calc(100svh - 92px));
+        min-height: 380px;
+    }
+
+    .webcam-card .reflective-card-content {
+        padding: 13px;
+        gap: 7px;
+    }
+
+    .result-placeholder {
+        margin-top: 28px;
+    }
+
+    .controls-section {
+        width: min(42vw, 330px);
+    }
+
+    .mode-selector {
+        flex-direction: column;
     }
 }

@@ -129,3 +129,15 @@
     animation: none;
   }
 }
+
+@media (hover: none), (pointer: coarse) {
+  .reflective-card-surface,
+  .reflective-card-aura {
+    transform: none;
+  }
+
+  .reflective-card-glare,
+  .reflective-card-shine {
+    display: none;
+  }
+}

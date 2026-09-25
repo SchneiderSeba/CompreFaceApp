@@ -17,12 +17,15 @@
 html {
   min-width: 320px;
   min-height: 100%;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
   background: #050806;
 }
 
 body {
   min-width: 320px;
   min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
   font-family: var(--app-font);
   overflow-x: hidden;
@@ -37,6 +40,12 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+button,
+label,
+input {
+  touch-action: manipulation;
 }
 
 button:focus-visible,
