@@ -10,6 +10,7 @@ export interface CaptureResponse {
   name: string
   employeeCode: string
   image_id: string
+  employee?: Employee
 }
 
 export interface RecognitionSubject {
@@ -34,6 +35,33 @@ export interface Employee {
   comprefaceSubject: string
   createdAt: string
   updatedAt: string
+  checkInCount: number
+  lastCheckInAt: string | null
+}
+
+export interface DashboardStats {
+  totals: {
+    employees: number
+    checkIns: number
+    todayCheckIns: number
+    todayEmployees: number
+  }
+  dailyCheckIns: Array<{ day: string; count: number }>
+  employeeActivity: Array<{
+    employeeId: number
+    displayName: string
+    employeeCode: string
+    count: number
+    lastCheckInAt: string | null
+  }>
+  recentCheckIns: Array<{
+    id: number
+    checkedInAt: string
+    similarity: number | null
+    employeeId: number
+    displayName: string
+    employeeCode: string
+  }>
 }
 
 export interface CheckIn {

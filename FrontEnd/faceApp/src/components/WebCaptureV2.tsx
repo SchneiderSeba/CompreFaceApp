@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import axios from "axios";
 import { ReflectiveCard } from "./ReflectiveCard";
 import CountUp from "./CountUp";
-import type { CaptureResponse, RecognitionResponse } from "../types";
+import type { CaptureResponse, Employee, RecognitionResponse } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://comprefaceapp-production-a8a0.up.railway.app';
 
@@ -12,9 +12,15 @@ interface WebCaptureV2Props {
     canManagePeople: boolean;
     onUnauthorized: () => void;
     onRecognized: (recognition: RecognitionResponse) => void;
+    onEmployeeCreated?: (employee: Employee) => void;
 }
 
-export const WebCaptureV2: React.FC<WebCaptureV2Props> = ({ canManagePeople, onUnauthorized, onRecognized }) => {
+export const WebCaptureV2: React.FC<WebCaptureV2Props> = ({
+    canManagePeople,
+    onUnauthorized,
+    onRecognized,
+    onEmployeeCreated
+}) => {
     const webcamRef = useRef<WebCam>(null);
     const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [loading, setLoading] = useState(false);
@@ -27,6 +33,7 @@ export const WebCaptureV2: React.FC<WebCaptureV2Props> = ({ canManagePeople, onU
     const [cameraError, setCameraError] = useState<string | null>(null);
     const [cameraReady, setCameraReady] = useState(false);
     const [cameraKey, setCameraKey] = useState(0);
+    const [numbersFinished, setNumbersFinished] = useState(false);
 
     const releaseCameraStream = useCallback(() => {
         const stream = webcamRef.current?.video?.srcObject;
@@ -75,6 +82,7 @@ export const WebCaptureV2: React.FC<WebCaptureV2Props> = ({ canManagePeople, onU
             setResultRecognize(null);
             setNewFaceName('');
             setEmployeeCode('');
+            if (response.data.employee) onEmployeeCreated?.(response.data.employee);
         } catch (error: unknown) {
             console.error('Error uploading image:', error);
             if (axios.isAxiosError(error) && error.response?.status === 401) onUnauthorized();
@@ -82,7 +90,7 @@ export const WebCaptureV2: React.FC<WebCaptureV2Props> = ({ canManagePeople, onU
         } finally {
             setLoading(false);
         }
-    }, [getErrorMessage, onUnauthorized]);
+    }, [getErrorMessage, onEmployeeCreated, onUnauthorized]);
 
     const handleCaptureRecognize = useCallback(async (screenshot: string) => {
         setLoading(true);
@@ -94,13 +102,8 @@ export const WebCaptureV2: React.FC<WebCaptureV2Props> = ({ canManagePeople, onU
             setResultRecognize(response.data);
             setResultManually(null);
             setRecognizeError(null);
-            if (response.data.matchedEmployee && response.data.checkIn) {
-                if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
-                redirectTimerRef.current = setTimeout(() => {
-                    releaseCameraStream();
-                    onRecognized(response.data);
-                }, 2000);
-            } else {
+            setNumbersFinished(false);
+            if (!response.data.matchedEmployee || !response.data.checkIn) {
                 setRecognizeError('El rostro no corresponde a un empleado registrado.');
             }
         } catch (error: unknown) {
@@ -113,7 +116,25 @@ export const WebCaptureV2: React.FC<WebCaptureV2Props> = ({ canManagePeople, onU
         } finally {
             setLoading(false);
         }
-    }, [getErrorMessage, onRecognized, releaseCameraStream]);
+    }, [getErrorMessage]);
+
+    const handleNumbersFinished = useCallback(() => {
+        setNumbersFinished(true);
+    }, []);
+
+    useEffect(() => {
+        if (!numbersFinished || !resultRecognize?.matchedEmployee || !resultRecognize.checkIn) return;
+
+        if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = setTimeout(() => {
+            releaseCameraStream();
+            onRecognized(resultRecognize);
+        }, 2000);
+
+        return () => {
+            if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+        };
+    }, [numbersFinished, onRecognized, releaseCameraStream, resultRecognize]);
 
     const recognitionResult = resultRecognize?.result?.[0];
     const similarityPercent = recognitionResult?.subjects?.[0]?.similarity
@@ -212,6 +233,8 @@ export const WebCaptureV2: React.FC<WebCaptureV2Props> = ({ canManagePeople, onU
                                                 from={0}
                                                 duration={1}
                                                 suffix="%"
+                                                decimals={1}
+                                                onEnd={handleNumbersFinished}
                                                 className="count-up-similarity"
                                             />
                                         </span>
@@ -224,15 +247,16 @@ export const WebCaptureV2: React.FC<WebCaptureV2Props> = ({ canManagePeople, onU
                                                 from={0}
                                                 duration={1}
                                                 suffix="%"
+                                                decimals={1}
                                                 className="count-up-probability"
                                             />
                                         </span>
                                     </div>
                                 </div>
                             </>
-                        ) : (
+                        ) : !resultManually ? (
                             <p className={`result-placeholder ${recognizeError || newFaceName !== '' ? 'disable' : ''}`}>Press "Recognize" & "Capture Photo" to Clock-In.</p>
-                        )}
+                        ) : null}
 
                         {recognizeError ? (
                             <div className="recognize-error">

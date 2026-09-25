@@ -190,6 +190,15 @@ FaceApp envía las capturas al CompreFace auto-hosteado del proyecto:
   
 - **POST `/recognize`** - Busca coincidencias en la galería de rostros
   - Cuando el rostro coincide con un registro de `empleados`, crea una entrada en `check_ins` y devuelve `matchedEmployee` y `checkIn`.
+- **PATCH `/api/employees/:id`** - Edita el nombre y legajo de un empleado (solo admin).
+- **GET `/api/admin/dashboard`** - Devuelve totales, actividad diaria, actividad por empleado y últimos check-ins (solo admin).
+
+### Rutas de la interfaz
+
+- `/` - Reconocimiento facial y check-in.
+- `/welcome` - Confirmación del empleado reconocido.
+- `/admin/charts` - Dashboard protegido con métricas de ingresos.
+- `/admin/employees` - Alta, listado y edición de empleados.
 
 ### Persistencia de empleados y check-ins
 

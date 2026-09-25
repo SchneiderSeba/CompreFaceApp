@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import './App.css';
-import { AddManually } from './components/AddManually';
+import { AdminDashboard } from './components/AdminDashboard';
 import { WebCaptureV2 } from './components/WebCaptureV2';
 import { Welcome } from './components/Welcome';
 import ParticlesBackground from './components/ParticlesBackground';
@@ -21,16 +21,20 @@ function App() {
   });
   const [user, setUser] = useState<AuthUser | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
-  const [showLogin, setShowLogin] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
 
+  const navigate = useCallback((path: string) => {
+    window.history.pushState({}, '', path);
+    setRoute(path);
+  }, []);
+
   const clearSession = useCallback(() => {
     setUser(null);
-    setShowLogin(true);
-  }, []);
+    navigate('/admin');
+  }, [navigate]);
 
   useEffect(() => {
     axios.get<{ user: AuthUser }>(`${API_URL}/api/auth/me`, { withCredentials: true })
@@ -50,7 +54,6 @@ function App() {
       }, { withCredentials: true });
       setUser(response.data.user);
       setPassword('');
-      setShowLogin(false);
     } catch (unknownError) {
       const message = axios.isAxiosError(unknownError)
         ? unknownError.response?.data?.error || unknownError.message
@@ -66,7 +69,7 @@ function App() {
       await axios.post(`${API_URL}/api/auth/logout`, {}, { withCredentials: true });
     } finally {
       setUser(null);
-      setShowLogin(false);
+      navigate('/');
     }
   };
 
@@ -81,48 +84,88 @@ function App() {
   const showWelcome = useCallback((recognition: RecognitionResponse) => {
     sessionStorage.setItem('lastCheckIn', JSON.stringify(recognition));
     setWelcomeRecognition(recognition);
-    window.history.pushState({}, '', '/welcome');
-    setRoute('/welcome');
-  }, []);
+    navigate('/welcome');
+  }, [navigate]);
 
   const returnToCheckIn = useCallback(() => {
     sessionStorage.removeItem('lastCheckIn');
     setWelcomeRecognition(null);
-    window.history.pushState({}, '', '/');
-    setRoute('/');
-  }, []);
+    navigate('/');
+  }, [navigate]);
+
+  const particles = (
+    <ParticlesBackground
+      particleColors={['#ffffff', '#ffffff']}
+      particleCount={200}
+      particleSpread={10}
+      speed={0.1}
+      particleBaseSize={100}
+      moveParticlesOnHover
+      alphaParticles={false}
+      disableRotation={false}
+    />
+  );
 
   if (route === '/welcome' && welcomeRecognition?.matchedEmployee && welcomeRecognition.checkIn) {
     return (
       <>
-        <ParticlesBackground
-          particleColors={['#ffffff', '#ffffff']}
-          particleCount={200}
-          particleSpread={10}
-          speed={0.1}
-          particleBaseSize={100}
-          moveParticlesOnHover
-          alphaParticles={false}
-          disableRotation={false}
-        />
+        {particles}
         <Welcome recognition={welcomeRecognition} onFinish={returnToCheckIn} />
+      </>
+    );
+  }
+
+  if (route.startsWith('/admin')) {
+    if (checkingSession) {
+      return <>{particles}<div className="admin-login-page"><p>Verificando sesión…</p></div></>;
+    }
+
+    if (isAdmin) {
+      const section = route === '/admin/employees' ? 'employees' : 'charts';
+      return (
+        <>
+          {particles}
+          <AdminDashboard
+            user={user}
+            section={section}
+            onNavigate={navigate}
+            onLogout={() => void logout()}
+            onUnauthorized={clearSession}
+          />
+        </>
+      );
+    }
+
+    return (
+      <>
+        {particles}
+        <main className="admin-login-page">
+          <button className="admin-login-back" type="button" onClick={() => navigate('/')}>← Volver al check-in</button>
+          <form className="login-panel admin-login-panel" onSubmit={login}>
+            <div>
+              <p className="app-kicker">Área restringida</p>
+              <h2>Administración</h2>
+              <p>Inicia sesión para gestionar empleados y consultar sus registros.</p>
+            </div>
+            <label>
+              Usuario
+              <input autoComplete="username" value={username} onChange={(event) => setUsername(event.target.value)} required autoFocus />
+            </label>
+            <label>
+              Contraseña
+              <input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+            </label>
+            {authError && <p className="login-error">{authError}</p>}
+            <button className="primary-action" disabled={authLoading}>{authLoading ? 'Verificando…' : 'Ingresar'}</button>
+          </form>
+        </main>
       </>
     );
   }
 
   return (
     <>
-      <ParticlesBackground
-        particleColors={['#ffffff', '#ffffff']}
-        particleCount={200}
-        particleSpread={10}
-        speed={0.1}
-        particleBaseSize={100}
-        moveParticlesOnHover
-        alphaParticles={false}
-        disableRotation={false}
-        className={undefined}
-      />
+      {particles}
 
       <div className="app-container">
         <header className="app-header">
@@ -138,46 +181,18 @@ function App() {
                   <small>Administrador</small>
                   {user.displayName}
                 </span>
+                <button type="button" className="secondary-action" onClick={() => navigate('/admin/charts')}>Dashboard</button>
                 <button type="button" className="secondary-action" onClick={() => void logout()}>Cerrar sesión</button>
               </div>
             ) : (
-              <button type="button" className="secondary-action" onClick={() => setShowLogin((visible) => !visible)}>
+              <button type="button" className="secondary-action" onClick={() => navigate('/admin')}>
                 Acceso administrador
               </button>
             )
           )}
         </header>
 
-        {showLogin && !isAdmin && (
-          <form className="login-panel" onSubmit={login}>
-            <div>
-              <p className="app-kicker">Área restringida</p>
-              <h2>Iniciar sesión</h2>
-              <p>Solo los administradores pueden registrar personas.</p>
-            </div>
-            <label>
-              Usuario
-              <input autoComplete="username" value={username} onChange={(event) => setUsername(event.target.value)} required />
-            </label>
-            <label>
-              Contraseña
-              <input
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-              />
-            </label>
-            {authError && <p className="login-error">{authError}</p>}
-            <button className="primary-action" disabled={authLoading}>
-              {authLoading ? 'Verificando…' : 'Ingresar'}
-            </button>
-          </form>
-        )}
-
         <WebCaptureV2 canManagePeople={isAdmin} onUnauthorized={clearSession} onRecognized={showWelcome} />
-        {isAdmin && <AddManually onUnauthorized={clearSession} />}
       </div>
     </>
   );

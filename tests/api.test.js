@@ -89,6 +89,57 @@ test('allows an admin to list employees', async () => {
   assert.equal(body.employees[0].employeeCode, 'EMP-TEST');
   assert.equal(body.employees[0].displayName, 'Empleado Test');
   assert.equal(body.employees[0].role, 'employee');
+  assert.equal(body.employees[0].checkInCount, 1);
+  assert.ok(body.employees[0].lastCheckInAt);
+});
+
+test('protects dashboard statistics from anonymous requests', async () => {
+  const response = await fetch(`${baseUrl}/api/admin/dashboard`);
+  assert.equal(response.status, 401);
+});
+
+test('returns employee and check-in statistics to admins', async () => {
+  const response = await fetch(`${baseUrl}/api/admin/dashboard`, {
+    headers: { cookie: adminCookie }
+  });
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.totals.employees, 1);
+  assert.equal(body.totals.checkIns, 1);
+  assert.equal(body.employeeActivity[0].employeeCode, 'EMP-TEST');
+  assert.equal(body.recentCheckIns[0].similarity, 0.96);
+  assert.equal(body.dailyCheckIns.length, 7);
+});
+
+test('protects employee editing from anonymous requests', async () => {
+  const response = await fetch(`${baseUrl}/api/employees/1`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ displayName: 'Updated', employeeCode: 'EMP-UPDATED' })
+  });
+  assert.equal(response.status, 401);
+});
+
+test('allows admins to edit employee data', async () => {
+  const response = await fetch(`${baseUrl}/api/employees/1`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', cookie: adminCookie },
+    body: JSON.stringify({ displayName: 'Empleado Actualizado', employeeCode: 'EMP-UPDATED' })
+  });
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.employee.displayName, 'Empleado Actualizado');
+  assert.equal(body.employee.employeeCode, 'EMP-UPDATED');
+  assert.equal(body.employee.checkInCount, 1);
+});
+
+test('validates employee edits', async () => {
+  const response = await fetch(`${baseUrl}/api/employees/1`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', cookie: adminCookie },
+    body: JSON.stringify({ displayName: '', employeeCode: '!' })
+  });
+  assert.equal(response.status, 400);
 });
 
 test('capture rejects anonymous requests', async () => {

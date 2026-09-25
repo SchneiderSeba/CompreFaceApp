@@ -7,6 +7,8 @@ const API_URL = import.meta.env.VITE_API_URL || 'https://comprefaceapp-productio
 
 interface AddManuallyProps {
   onUnauthorized: () => void;
+  onEmployeeCreated?: (employee: Employee) => void;
+  showEmployeeList?: boolean;
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -18,7 +20,11 @@ function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
-export const AddManually: React.FC<AddManuallyProps> = ({ onUnauthorized }) => {
+export const AddManually: React.FC<AddManuallyProps> = ({
+  onUnauthorized,
+  onEmployeeCreated,
+  showEmployeeList = true
+}) => {
   const [name, setName] = useState('');
   const [employeeCode, setEmployeeCode] = useState('');
   const [image, setImage] = useState('');
@@ -47,8 +53,8 @@ export const AddManually: React.FC<AddManuallyProps> = ({ onUnauthorized }) => {
   }, [handleApiError]);
 
   useEffect(() => {
-    void loadEmployees();
-  }, [loadEmployees]);
+    if (showEmployeeList) void loadEmployees();
+  }, [loadEmployees, showEmployeeList]);
 
   const handleFile = async (file?: File) => {
     setResult(null);
@@ -80,7 +86,8 @@ export const AddManually: React.FC<AddManuallyProps> = ({ onUnauthorized }) => {
       setName('');
       setEmployeeCode('');
       setImage('');
-      await loadEmployees();
+      if (response.data.employee) onEmployeeCreated?.(response.data.employee);
+      if (showEmployeeList) await loadEmployees();
     } catch (unknownError) {
       setError(handleApiError(unknownError));
     } finally {
@@ -137,7 +144,7 @@ export const AddManually: React.FC<AddManuallyProps> = ({ onUnauthorized }) => {
           </button>
         </form>
 
-        <div className="employee-list-panel">
+        {showEmployeeList && <div className="employee-list-panel">
           <div className="employee-list-heading">
             <h3>Empleados registrados</h3>
             <span>{employees.length}</span>
@@ -157,7 +164,7 @@ export const AddManually: React.FC<AddManuallyProps> = ({ onUnauthorized }) => {
               ))}
             </ul>
           )}
-        </div>
+        </div>}
       </div>
     </section>
   );

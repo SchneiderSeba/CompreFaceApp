@@ -15,6 +15,7 @@ interface CountUpProps {
   onStart?: () => void;
   onEnd?: () => void;
   suffix?: string;
+  decimals?: number;
 }
 
 export default function CountUp({
@@ -27,7 +28,9 @@ export default function CountUp({
   startWhen = true,
   separator = '',
   onStart,
-  onEnd
+  onEnd,
+  suffix = '',
+  decimals
 }: CountUpProps) {
   const ref = useRef<HTMLSpanElement | null>(null);
   const motionValue = useMotionValue<number>(direction === 'down' ? to : from);
@@ -56,7 +59,7 @@ export default function CountUp({
     return 0;
   };
 
-  const maxDecimals = Math.max(getDecimalPlaces(from), getDecimalPlaces(to));
+  const maxDecimals = decimals ?? Math.min(2, Math.max(getDecimalPlaces(from), getDecimalPlaces(to)));
 
   const formatValue = useCallback(
     (latest: number) => {
@@ -70,9 +73,10 @@ export default function CountUp({
 
       const formattedNumber = Intl.NumberFormat('en-US', options).format(latest);
 
-      return separator ? formattedNumber.replace(/,/g, separator) : formattedNumber;
+      const normalizedNumber = separator ? formattedNumber.replace(/,/g, separator) : formattedNumber;
+      return `${normalizedNumber}${suffix}`;
     },
-    [maxDecimals, separator]
+    [maxDecimals, separator, suffix]
   );
 
   useEffect(() => {

@@ -158,6 +158,41 @@
   font-size: 12px;
 }
 
+.admin-login-page {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.admin-login-page > p {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.admin-login-panel {
+  width: min(900px, 100%);
+  margin: 0;
+}
+
+.admin-login-back {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.62);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-login-back:hover {
+  color: #a8efbd;
+}
+
 @media (max-width: 850px) {
   .login-panel {
     grid-template-columns: 1fr 1fr;

@@ -117,9 +117,20 @@ function publicEmployee(row) {
     role: 'employee',
     comprefaceSubject: row.compreface_subject,
     createdAt: row.created_at,
-    updatedAt: row.updated_at
+    updatedAt: row.updated_at,
+    checkInCount: Number(row.check_in_count || 0),
+    lastCheckInAt: row.last_check_in_at || null
   };
 }
+
+const employeeWithActivitySelect = `
+  SELECT
+    empleados.*,
+    COUNT(check_ins.id) AS check_in_count,
+    MAX(check_ins.checked_in_at) AS last_check_in_at
+  FROM empleados
+  LEFT JOIN check_ins ON check_ins.empleado_id = empleados.id
+`;
 
 export const adminConfiguration = {
   configured: false,
@@ -214,19 +225,42 @@ export function createEmployee({ displayName, employeeCode, comprefaceSubject, c
       nombre_completo, legajo, compreface_subject, compreface_image_id
     ) VALUES (?, ?, ?, ?)
   `).run(displayName, employeeCode, comprefaceSubject, comprefaceImageId);
-  return publicEmployee(database.prepare('SELECT * FROM empleados WHERE id = ?').get(result.lastInsertRowid));
+  return getEmployeeById(result.lastInsertRowid);
 }
 
 export function listEmployees() {
   return database.prepare(`
-    SELECT * FROM empleados ORDER BY nombre_completo COLLATE NOCASE
+    ${employeeWithActivitySelect}
+    GROUP BY empleados.id
+    ORDER BY empleados.nombre_completo COLLATE NOCASE
   `).all().map(publicEmployee);
 }
 
 export function getEmployeeBySubject(subject) {
   return publicEmployee(database.prepare(`
-    SELECT * FROM empleados WHERE compreface_subject = ? LIMIT 1
+    ${employeeWithActivitySelect}
+    WHERE empleados.compreface_subject = ?
+    GROUP BY empleados.id
+    LIMIT 1
   `).get(subject));
+}
+
+export function getEmployeeById(id) {
+  return publicEmployee(database.prepare(`
+    ${employeeWithActivitySelect}
+    WHERE empleados.id = ?
+    GROUP BY empleados.id
+    LIMIT 1
+  `).get(id));
+}
+
+export function updateEmployee({ id, displayName, employeeCode }) {
+  const result = database.prepare(`
+    UPDATE empleados
+    SET nombre_completo = ?, legajo = ?, updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(displayName, employeeCode, id);
+  return result.changes ? getEmployeeById(id) : null;
 }
 
 export function createCheckIn({ employeeId, similarity, detectionProbability }) {
@@ -246,6 +280,84 @@ export function createCheckIn({ employeeId, similarity, detectionProbability }) 
     similarity: row.similarity,
     detectionProbability: row.detection_probability,
     checkedInAt: row.checked_in_at
+  };
+}
+
+export function getDashboardStats() {
+  const totals = database.prepare(`
+    SELECT
+      (SELECT COUNT(*) FROM empleados) AS employees,
+      (SELECT COUNT(*) FROM check_ins) AS check_ins,
+      (SELECT COUNT(*) FROM check_ins WHERE date(checked_in_at) = date('now')) AS today_check_ins,
+      (SELECT COUNT(DISTINCT empleado_id) FROM check_ins WHERE date(checked_in_at) = date('now')) AS today_employees
+  `).get();
+
+  const dailyRows = database.prepare(`
+    SELECT date(checked_in_at) AS day, COUNT(*) AS count
+    FROM check_ins
+    WHERE date(checked_in_at) >= date('now', '-6 days')
+    GROUP BY date(checked_in_at)
+    ORDER BY day
+  `).all();
+  const dailyByDate = new Map(dailyRows.map((row) => [row.day, Number(row.count)]));
+  const dailyCheckIns = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date();
+    date.setUTCHours(0, 0, 0, 0);
+    date.setUTCDate(date.getUTCDate() - (6 - index));
+    const day = date.toISOString().slice(0, 10);
+    return { day, count: dailyByDate.get(day) || 0 };
+  });
+
+  const employeeActivity = database.prepare(`
+    SELECT
+      empleados.id,
+      empleados.nombre_completo AS display_name,
+      empleados.legajo AS employee_code,
+      COUNT(check_ins.id) AS count,
+      MAX(check_ins.checked_in_at) AS last_check_in_at
+    FROM empleados
+    LEFT JOIN check_ins ON check_ins.empleado_id = empleados.id
+    GROUP BY empleados.id
+    ORDER BY count DESC, empleados.nombre_completo COLLATE NOCASE
+  `).all().map((row) => ({
+    employeeId: row.id,
+    displayName: row.display_name,
+    employeeCode: row.employee_code,
+    count: Number(row.count),
+    lastCheckInAt: row.last_check_in_at || null
+  }));
+
+  const recentCheckIns = database.prepare(`
+    SELECT
+      check_ins.id,
+      check_ins.checked_in_at,
+      check_ins.similarity,
+      empleados.id AS employee_id,
+      empleados.nombre_completo AS display_name,
+      empleados.legajo AS employee_code
+    FROM check_ins
+    JOIN empleados ON empleados.id = check_ins.empleado_id
+    ORDER BY check_ins.checked_in_at DESC, check_ins.id DESC
+    LIMIT 10
+  `).all().map((row) => ({
+    id: row.id,
+    checkedInAt: row.checked_in_at,
+    similarity: row.similarity,
+    employeeId: row.employee_id,
+    displayName: row.display_name,
+    employeeCode: row.employee_code
+  }));
+
+  return {
+    totals: {
+      employees: Number(totals.employees),
+      checkIns: Number(totals.check_ins),
+      todayCheckIns: Number(totals.today_check_ins),
+      todayEmployees: Number(totals.today_employees)
+    },
+    dailyCheckIns,
+    employeeActivity,
+    recentCheckIns
   };
 }
 

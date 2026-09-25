@@ -20,9 +20,11 @@ import {
   createSession,
   deleteSession,
   findAdminByUsername,
+  getDashboardStats,
   getEmployeeBySubject,
   getUserBySession,
   listEmployees,
+  updateEmployee,
   verifyPassword
 } from './database.js';
 import { getSessionToken, requireAdmin, SESSION_COOKIE } from './auth.js';
@@ -145,6 +147,40 @@ app.post('/api/auth/logout', (req, res) => {
 
 app.get('/api/employees', requireAdmin, (_req, res) => {
   res.json({ employees: listEmployees() });
+});
+
+app.get('/api/admin/dashboard', requireAdmin, (_req, res) => {
+  res.json(getDashboardStats());
+});
+
+app.patch('/api/employees/:id', requireAdmin, (req, res) => {
+  try {
+    const id = Number.parseInt(req.params.id, 10);
+    const displayName = typeof req.body.displayName === 'string' ? req.body.displayName.trim() : '';
+    const employeeCode = typeof req.body.employeeCode === 'string'
+      ? req.body.employeeCode.trim().toUpperCase()
+      : '';
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'El empleado no es válido' });
+    }
+    if (!displayName || displayName.length > 120) {
+      return res.status(400).json({ error: 'El nombre debe tener entre 1 y 120 caracteres' });
+    }
+    if (!/^[A-Z0-9_-]{2,32}$/.test(employeeCode)) {
+      return res.status(400).json({ error: 'El legajo debe tener entre 2 y 32 letras, números, guiones o guiones bajos' });
+    }
+
+    const employee = updateEmployee({ id, displayName, employeeCode });
+    if (!employee) return res.status(404).json({ error: 'Empleado no encontrado' });
+    res.json({ employee });
+  } catch (error) {
+    const duplicate = error.message?.includes('UNIQUE constraint failed');
+    console.error('Error updating employee:', error.message);
+    res.status(duplicate ? 409 : 500).json({
+      error: duplicate ? 'Ya existe un empleado con ese legajo' : 'No se pudo actualizar el empleado'
+    });
+  }
 });
 
 async function createEmployeeHandler(req, res) {
