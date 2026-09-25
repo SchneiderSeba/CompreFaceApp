@@ -5,6 +5,7 @@ let server;
 let baseUrl;
 let adminCookie;
 let closeDatabase;
+let createCheckIn;
 
 before(async () => {
   process.env.DATABASE_PATH = ':memory:';
@@ -17,12 +18,21 @@ before(async () => {
 
   const databaseModule = await import('../database.js');
   closeDatabase = databaseModule.closeDatabase;
-  databaseModule.createEmployee({
+  createCheckIn = databaseModule.createCheckIn;
+  const seededEmployee = databaseModule.createEmployee({
     displayName: 'Empleado Test',
     employeeCode: 'EMP-TEST',
     comprefaceSubject: 'employee_EMP-TEST',
     comprefaceImageId: 'test-image'
   });
+  const seededCheckIn = createCheckIn({
+    employeeId: seededEmployee.id,
+    similarity: 0.96,
+    detectionProbability: 0.99
+  });
+  assert.equal(seededCheckIn.employeeId, seededEmployee.id);
+  assert.equal(seededCheckIn.similarity, 0.96);
+  assert.ok(seededCheckIn.checkedInAt);
 
   const { app } = await import('../index.js');
   server = app.listen(0, '127.0.0.1');
@@ -77,7 +87,8 @@ test('allows an admin to list employees', async () => {
   const body = await response.json();
   assert.equal(body.employees.length, 1);
   assert.equal(body.employees[0].employeeCode, 'EMP-TEST');
-  assert.equal(body.employees[0].username, null);
+  assert.equal(body.employees[0].displayName, 'Empleado Test');
+  assert.equal(body.employees[0].role, 'employee');
 });
 
 test('capture rejects anonymous requests', async () => {

@@ -11,10 +11,12 @@ const API_URL = import.meta.env.VITE_API_URL || 'https://comprefaceapp-productio
 interface WebCaptureV2Props {
     canManagePeople: boolean;
     onUnauthorized: () => void;
+    onRecognized: (recognition: RecognitionResponse) => void;
 }
 
-export const WebCaptureV2: React.FC<WebCaptureV2Props> = ({ canManagePeople, onUnauthorized }) => {
+export const WebCaptureV2: React.FC<WebCaptureV2Props> = ({ canManagePeople, onUnauthorized, onRecognized }) => {
     const webcamRef = useRef<WebCam>(null);
+    const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [loading, setLoading] = useState(false);
     const [resultManually, setResultManually] = useState<CaptureResponse | null>(null);
     const [newFaceName, setNewFaceName] = useState<string>('');
@@ -44,6 +46,7 @@ export const WebCaptureV2: React.FC<WebCaptureV2Props> = ({ canManagePeople, onU
 
     useEffect(() => () => {
         releaseCameraStream();
+        if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
     }, [releaseCameraStream]);
 
     useEffect(() => {
@@ -91,6 +94,15 @@ export const WebCaptureV2: React.FC<WebCaptureV2Props> = ({ canManagePeople, onU
             setResultRecognize(response.data);
             setResultManually(null);
             setRecognizeError(null);
+            if (response.data.matchedEmployee && response.data.checkIn) {
+                if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+                redirectTimerRef.current = setTimeout(() => {
+                    releaseCameraStream();
+                    onRecognized(response.data);
+                }, 2000);
+            } else {
+                setRecognizeError('El rostro no corresponde a un empleado registrado.');
+            }
         } catch (error: unknown) {
             console.error('Error recognizing image:', error);
             setRecognizeError(getErrorMessage(error));
@@ -101,7 +113,7 @@ export const WebCaptureV2: React.FC<WebCaptureV2Props> = ({ canManagePeople, onU
         } finally {
             setLoading(false);
         }
-    }, [getErrorMessage]);
+    }, [getErrorMessage, onRecognized, releaseCameraStream]);
 
     const recognitionResult = resultRecognize?.result?.[0];
     const similarityPercent = recognitionResult?.subjects?.[0]?.similarity

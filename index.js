@@ -15,6 +15,7 @@ import {
 import { cleanTempFolder } from './cleanTempImg.js';
 import {
   adminConfiguration,
+  createCheckIn,
   createEmployee,
   createSession,
   deleteSession,
@@ -213,16 +214,26 @@ app.post('/recognize', async (req, res) => {
       return res.status(400).json({ error: 'No image provided' });
     }
     const result = await recognizFace(image);
+    let matchedEmployee = null;
+    let checkIn = null;
     for (const face of result.result || []) {
       for (const subject of face.subjects || []) {
         const employee = getEmployeeBySubject(subject.subject);
         if (employee) {
           subject.displayName = employee.displayName;
           subject.employeeCode = employee.employeeCode;
+          if (!matchedEmployee) {
+            matchedEmployee = employee;
+            checkIn = createCheckIn({
+              employeeId: employee.id,
+              similarity: subject.similarity,
+              detectionProbability: face.box?.probability
+            });
+          }
         }
       }
     }
-    res.json(result);
+    res.json({ ...result, matchedEmployee, checkIn });
   } catch (error) {
     console.error('Error during recognition:', error.message);
     res.status(error.statusCode || 500).json({ error: error.message });

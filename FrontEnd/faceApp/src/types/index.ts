@@ -33,6 +33,15 @@ export interface Employee {
   role: 'employee'
   comprefaceSubject: string
   createdAt: string
+  updatedAt: string
+}
+
+export interface CheckIn {
+  id: number
+  employeeId: number
+  similarity: number | null
+  detectionProbability: number | null
+  checkedInAt: string
 }
 
 export interface RecognitionBox {
@@ -46,6 +55,8 @@ export interface RecognitionResult {
 
 export interface RecognitionResponse {
   result?: RecognitionResult[]
+  matchedEmployee?: Employee | null
+  checkIn?: CheckIn | null
 }
 
 export type { FaceItem }

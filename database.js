@@ -44,7 +44,39 @@ database.exec(`
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 
+  CREATE TABLE IF NOT EXISTS empleados (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre_completo TEXT NOT NULL,
+    legajo TEXT NOT NULL UNIQUE,
+    compreface_subject TEXT NOT NULL UNIQUE,
+    compreface_image_id TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS check_ins (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    empleado_id INTEGER NOT NULL REFERENCES empleados(id) ON DELETE CASCADE,
+    similarity REAL,
+    detection_probability REAL,
+    checked_in_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+  CREATE INDEX IF NOT EXISTS idx_check_ins_empleado_id ON check_ins(empleado_id);
+  CREATE INDEX IF NOT EXISTS idx_check_ins_checked_in_at ON check_ins(checked_in_at);
+`);
+
+// Move employees created by older versions into their dedicated table.
+database.exec(`
+  INSERT OR IGNORE INTO empleados (
+    nombre_completo, legajo, compreface_subject, compreface_image_id, created_at
+  )
+  SELECT display_name, employee_code, compreface_subject, compreface_image_id, created_at
+  FROM users
+  WHERE role = 'employee'
+    AND employee_code IS NOT NULL
+    AND compreface_subject IS NOT NULL;
 `);
 
 function hashPassword(password) {
@@ -73,6 +105,19 @@ function publicUser(row) {
     role: row.role,
     comprefaceSubject: row.compreface_subject,
     createdAt: row.created_at
+  };
+}
+
+function publicEmployee(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    displayName: row.nombre_completo,
+    employeeCode: row.legajo,
+    role: 'employee',
+    comprefaceSubject: row.compreface_subject,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
   };
 }
 
@@ -165,23 +210,43 @@ export function deleteSession(token) {
 
 export function createEmployee({ displayName, employeeCode, comprefaceSubject, comprefaceImageId }) {
   const result = database.prepare(`
-    INSERT INTO users (
-      display_name, employee_code, role, compreface_subject, compreface_image_id
-    ) VALUES (?, ?, 'employee', ?, ?)
+    INSERT INTO empleados (
+      nombre_completo, legajo, compreface_subject, compreface_image_id
+    ) VALUES (?, ?, ?, ?)
   `).run(displayName, employeeCode, comprefaceSubject, comprefaceImageId);
-  return publicUser(database.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid));
+  return publicEmployee(database.prepare('SELECT * FROM empleados WHERE id = ?').get(result.lastInsertRowid));
 }
 
 export function listEmployees() {
   return database.prepare(`
-    SELECT * FROM users WHERE role = 'employee' ORDER BY display_name COLLATE NOCASE
-  `).all().map(publicUser);
+    SELECT * FROM empleados ORDER BY nombre_completo COLLATE NOCASE
+  `).all().map(publicEmployee);
 }
 
 export function getEmployeeBySubject(subject) {
-  return publicUser(database.prepare(`
-    SELECT * FROM users WHERE role = 'employee' AND compreface_subject = ? LIMIT 1
+  return publicEmployee(database.prepare(`
+    SELECT * FROM empleados WHERE compreface_subject = ? LIMIT 1
   `).get(subject));
+}
+
+export function createCheckIn({ employeeId, similarity, detectionProbability }) {
+  const result = database.prepare(`
+    INSERT INTO check_ins (empleado_id, similarity, detection_probability)
+    VALUES (?, ?, ?)
+  `).run(employeeId, similarity ?? null, detectionProbability ?? null);
+
+  const row = database.prepare(`
+    SELECT id, empleado_id, similarity, detection_probability, checked_in_at
+    FROM check_ins WHERE id = ?
+  `).get(result.lastInsertRowid);
+
+  return {
+    id: row.id,
+    employeeId: row.empleado_id,
+    similarity: row.similarity,
+    detectionProbability: row.detection_probability,
+    checkedInAt: row.checked_in_at
+  };
 }
 
 export function closeDatabase() {

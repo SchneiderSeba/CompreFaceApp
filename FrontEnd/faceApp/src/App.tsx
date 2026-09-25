@@ -3,12 +3,22 @@ import axios from 'axios';
 import './App.css';
 import { AddManually } from './components/AddManually';
 import { WebCaptureV2 } from './components/WebCaptureV2';
+import { Welcome } from './components/Welcome';
 import ParticlesBackground from './components/ParticlesBackground';
-import type { AuthUser } from './types';
+import type { AuthUser, RecognitionResponse } from './types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://comprefaceapp-production-a8a0.up.railway.app';
 
 function App() {
+  const [route, setRoute] = useState(window.location.pathname);
+  const [welcomeRecognition, setWelcomeRecognition] = useState<RecognitionResponse | null>(() => {
+    try {
+      const stored = sessionStorage.getItem('lastCheckIn');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
   const [user, setUser] = useState<AuthUser | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
@@ -61,6 +71,44 @@ function App() {
   };
 
   const isAdmin = user?.role === 'admin';
+
+  useEffect(() => {
+    const onPopState = () => setRoute(window.location.pathname);
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  const showWelcome = useCallback((recognition: RecognitionResponse) => {
+    sessionStorage.setItem('lastCheckIn', JSON.stringify(recognition));
+    setWelcomeRecognition(recognition);
+    window.history.pushState({}, '', '/welcome');
+    setRoute('/welcome');
+  }, []);
+
+  const returnToCheckIn = useCallback(() => {
+    sessionStorage.removeItem('lastCheckIn');
+    setWelcomeRecognition(null);
+    window.history.pushState({}, '', '/');
+    setRoute('/');
+  }, []);
+
+  if (route === '/welcome' && welcomeRecognition?.matchedEmployee && welcomeRecognition.checkIn) {
+    return (
+      <>
+        <ParticlesBackground
+          particleColors={['#ffffff', '#ffffff']}
+          particleCount={200}
+          particleSpread={10}
+          speed={0.1}
+          particleBaseSize={100}
+          moveParticlesOnHover
+          alphaParticles={false}
+          disableRotation={false}
+        />
+        <Welcome recognition={welcomeRecognition} onFinish={returnToCheckIn} />
+      </>
+    );
+  }
 
   return (
     <>
@@ -128,7 +176,7 @@ function App() {
           </form>
         )}
 
-        <WebCaptureV2 canManagePeople={isAdmin} onUnauthorized={clearSession} />
+        <WebCaptureV2 canManagePeople={isAdmin} onUnauthorized={clearSession} onRecognized={showWelcome} />
         {isAdmin && <AddManually onUnauthorized={clearSession} />}
       </div>
     </>

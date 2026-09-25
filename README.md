@@ -189,6 +189,18 @@ FaceApp envía las capturas al CompreFace auto-hosteado del proyecto:
   - Response: Detalles del rostro agregado con `image_id`
   
 - **POST `/recognize`** - Busca coincidencias en la galería de rostros
+  - Cuando el rostro coincide con un registro de `empleados`, crea una entrada en `check_ins` y devuelve `matchedEmployee` y `checkIn`.
+
+### Persistencia de empleados y check-ins
+
+SQLite mantiene separadas las credenciales administrativas y la información laboral:
+
+- `users`: cuentas administrativas que pueden iniciar sesión.
+- `empleados`: nombre, legajo y referencias del rostro registrado en CompreFace.
+- `sessions`: sesiones de administradores.
+- `check_ins`: historial de ingresos, fecha/hora y métricas de reconocimiento.
+
+Los empleados guardados por versiones anteriores dentro de `users` se copian automáticamente a `empleados` al iniciar el backend. Después de un reconocimiento exitoso, la interfaz espera dos segundos y abre `/welcome` con la información del empleado y del check-in.
   - Body: `{ image: string (base64) }`
   - Response: Lista de sujetos con similitud, probabilidad y bounding box
 

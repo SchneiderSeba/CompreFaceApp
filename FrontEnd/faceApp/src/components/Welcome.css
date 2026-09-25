@@ -1,0 +1,83 @@
+.welcome-page {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.welcome-card {
+  width: min(620px, 100%);
+  padding: clamp(28px, 6vw, 54px);
+  border: 1px solid rgba(112, 220, 145, 0.25);
+  border-radius: 28px;
+  background: rgba(9, 16, 12, 0.9);
+  box-shadow: 0 30px 100px rgba(0, 0, 0, 0.42), 0 0 70px rgba(57, 154, 90, 0.12);
+  text-align: center;
+  backdrop-filter: blur(22px);
+}
+
+.welcome-check {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #399a5a, #70dc91);
+  color: #fff;
+  font-size: 38px;
+  font-weight: 800;
+  box-shadow: 0 14px 40px rgba(57, 154, 90, 0.3);
+}
+
+.welcome-card h1 {
+  margin: 6px 0 8px;
+  color: #f5fff8;
+  font-size: clamp(2rem, 7vw, 3.4rem);
+  letter-spacing: -0.05em;
+}
+
+.welcome-time {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.employee-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 32px 0;
+  text-align: left;
+}
+
+.employee-details div {
+  padding: 15px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.employee-details dt {
+  margin-bottom: 5px;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.employee-details dd {
+  margin: 0;
+  color: #f5fff8;
+  font-weight: 700;
+}
+
+.welcome-button { width: 100%; }
+
+@media (max-width: 520px) {
+  .welcome-page { padding: 12px; }
+  .employee-details { grid-template-columns: 1fr; }
+}
