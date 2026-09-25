@@ -13,6 +13,7 @@ before(async () => {
   process.env.ADMIN_DISPLAY_NAME = 'Admin Test';
   process.env.COMPRE_FACE_API_KEY = 'test-key';
   process.env.COMPREFACE_API_KEY_ENV = 'COMPRE_FACE_API_KEY';
+  process.env.CLIENT_ORIGIN = '';
 
   const databaseModule = await import('../database.js');
   closeDatabase = databaseModule.closeDatabase;
@@ -106,4 +107,20 @@ test('recognize remains available without login', async () => {
   });
   assert.equal(response.status, 400);
   assert.deepEqual(await response.json(), { error: 'No image provided' });
+});
+
+test('allows preflight requests from the production custom domain', async () => {
+  const origin = 'https://facerecognize.schneidersebastian.com';
+  const response = await fetch(`${baseUrl}/recognize`, {
+    method: 'OPTIONS',
+    headers: {
+      origin,
+      'access-control-request-method': 'POST',
+      'access-control-request-headers': 'content-type'
+    }
+  });
+
+  assert.equal(response.status, 204);
+  assert.equal(response.headers.get('access-control-allow-origin'), origin);
+  assert.equal(response.headers.get('access-control-allow-credentials'), 'true');
 });

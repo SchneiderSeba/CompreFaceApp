@@ -35,7 +35,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const clientDistPath = path.resolve(__dirname, 'FrontEnd', 'faceApp', 'dist');
 const shouldServeClient = process.env.SERVE_CLIENT === 'true' || fs.existsSync(clientDistPath);
-const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:3000,http://localhost:5173,https://comprefacefront-production.up.railway.app')
+const allowedOrigins = (process.env.CLIENT_ORIGIN || [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'https://comprefacefront-production.up.railway.app',
+  'https://facerecognize.schneidersebastian.com'
+].join(','))
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
