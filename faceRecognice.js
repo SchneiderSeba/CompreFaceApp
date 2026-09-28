@@ -8,12 +8,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const imageDirectory = path.join(__dirname, 'image');
 const apiKeyVariable = process.env.COMPREFACE_API_KEY_ENV || 'COMPRE_FACE_API_KEY';
 const apiKey = process.env[apiKeyVariable];
-const configuredThreshold = Number(process.env.COMPREFACE_DETECTION_THRESHOLD || 0.6);
+const configuredThreshold = Number(process.env.COMPREFACE_DETECTION_THRESHOLD || 0.8);
 const detectionThreshold = Number.isFinite(configuredThreshold)
   && configuredThreshold >= 0
   && configuredThreshold <= 1
   ? configuredThreshold
-  : 0.6;
+  : 0.8;
 
 export const recognitionConfiguration = {
   configured: Boolean(apiKey),
