@@ -324,12 +324,23 @@ COMPRE_FACE_API_KEY=tu_api_key_aqui
 COMPREFACE_API_KEY_ENV=COMPRE_FACE_API_KEY
 CLIENT_ORIGIN=http://localhost:3000,http://localhost:5173,https://comprefacefront-production.up.railway.app,https://facerecognize.schneidersebastian.com
 DATABASE_PATH=./data/faceapp.sqlite
+DATABASE_POOL_MAX=10
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=una_contraseña_segura_de_12_caracteres_o_más
 ADMIN_DISPLAY_NAME=Administrador
 ```
 
 > En producción, configura `DATABASE_PATH` dentro de un volumen persistente (por ejemplo `/data/faceapp.sqlite`). Si cambias `ADMIN_USERNAME`, `ADMIN_PASSWORD` o `ADMIN_DISPLAY_NAME`, el administrador se actualiza en el siguiente arranque; cambiar la contraseña invalida sus sesiones existentes.
+
+Para producción se recomienda PostgreSQL. Al definir `DATABASE_URL`, el backend cambia automáticamente al adaptador PostgreSQL, crea el esquema y, si todavía existe el SQLite indicado por `DATABASE_PATH`, migra una sola vez sus empleados y check-ins. SQLite se mantiene como alternativa para desarrollo y pruebas.
+
+En Railway configura la variable del backend mediante una referencia al servicio PostgreSQL:
+
+```text
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+```
+
+El endpoint `/api/health` informa `services.database` como `postgresql`, `sqlite` o `unavailable`.
 
 ### Variables del backend en Railway
 

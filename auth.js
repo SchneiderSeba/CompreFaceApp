@@ -1,4 +1,4 @@
-import { getUserBySession } from './database.js';
+import { getUserBySession } from './database-provider.js';
 
 export const SESSION_COOKIE = 'faceapp_session';
 
@@ -14,10 +14,14 @@ export function getSessionToken(req) {
   return parseCookies(req.headers.cookie)[SESSION_COOKIE] || null;
 }
 
-export function requireAdmin(req, res, next) {
-  const user = getUserBySession(getSessionToken(req));
-  if (!user) return res.status(401).json({ error: 'Debes iniciar sesión' });
-  if (user.role !== 'admin') return res.status(403).json({ error: 'Se requieren permisos de administrador' });
-  req.user = user;
-  next();
+export async function requireAdmin(req, res, next) {
+  try {
+    const user = await getUserBySession(getSessionToken(req));
+    if (!user) return res.status(401).json({ error: 'Debes iniciar sesión' });
+    if (user.role !== 'admin') return res.status(403).json({ error: 'Se requieren permisos de administrador' });
+    req.user = user;
+    next();
+  } catch (error) {
+    next(error);
+  }
 }

@@ -15,6 +15,7 @@ import {
 import { cleanTempFolder } from './cleanTempImg.js';
 import {
   adminConfiguration,
+  checkDatabaseConnection,
   createCheckIn,
   createEmployee,
   createSession,
@@ -25,8 +26,9 @@ import {
   getUserBySession,
   listEmployees,
   updateEmployee,
-  verifyPassword
-} from './database.js';
+  verifyPassword,
+  databaseDriver
+} from './database-provider.js';
 import { getSessionToken, requireAdmin, SESSION_COOKIE } from './auth.js';
 
 dotenv.config();
@@ -94,7 +96,7 @@ function setSessionCookie(res, token, maxAgeSeconds = 8 * 60 * 60) {
   );
 }
 
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   if (!adminConfiguration.configured) {
     return res.status(503).json({
       error: 'El acceso administrativo todavía no está configurado en el servidor'
@@ -109,7 +111,7 @@ app.post('/api/auth/login', (req, res) => {
 
   const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
   const password = typeof req.body.password === 'string' ? req.body.password : '';
-  const admin = username ? findAdminByUsername(username) : null;
+  const admin = username ? await findAdminByUsername(username) : null;
 
   if (!admin || !verifyPassword(password, admin.password_hash)) {
     const failures = (attempt?.failures || 0) + 1;
@@ -121,7 +123,7 @@ app.post('/api/auth/login', (req, res) => {
   }
 
   loginAttempts.delete(key);
-  const session = createSession(admin.id);
+  const session = await createSession(admin.id);
   setSessionCookie(res, session.token);
   res.json({
     user: {
@@ -133,27 +135,27 @@ app.post('/api/auth/login', (req, res) => {
   });
 });
 
-app.get('/api/auth/me', (req, res) => {
-  const user = getUserBySession(getSessionToken(req));
+app.get('/api/auth/me', async (req, res) => {
+  const user = await getUserBySession(getSessionToken(req));
   if (!user) return res.status(401).json({ error: 'No autenticado' });
   res.json({ user });
 });
 
-app.post('/api/auth/logout', (req, res) => {
-  deleteSession(getSessionToken(req));
+app.post('/api/auth/logout', async (req, res) => {
+  await deleteSession(getSessionToken(req));
   setSessionCookie(res, '', 0);
   res.status(204).end();
 });
 
-app.get('/api/employees', requireAdmin, (_req, res) => {
-  res.json({ employees: listEmployees() });
+app.get('/api/employees', requireAdmin, async (_req, res) => {
+  res.json({ employees: await listEmployees() });
 });
 
-app.get('/api/admin/dashboard', requireAdmin, (_req, res) => {
-  res.json(getDashboardStats());
+app.get('/api/admin/dashboard', requireAdmin, async (_req, res) => {
+  res.json(await getDashboardStats());
 });
 
-app.patch('/api/employees/:id', requireAdmin, (req, res) => {
+app.patch('/api/employees/:id', requireAdmin, async (req, res) => {
   try {
     const id = Number.parseInt(req.params.id, 10);
     const displayName = typeof req.body.displayName === 'string' ? req.body.displayName.trim() : '';
@@ -171,11 +173,11 @@ app.patch('/api/employees/:id', requireAdmin, (req, res) => {
       return res.status(400).json({ error: 'El legajo debe tener entre 2 y 32 letras, números, guiones o guiones bajos' });
     }
 
-    const employee = updateEmployee({ id, displayName, employeeCode });
+    const employee = await updateEmployee({ id, displayName, employeeCode });
     if (!employee) return res.status(404).json({ error: 'Empleado no encontrado' });
     res.json({ employee });
   } catch (error) {
-    const duplicate = error.message?.includes('UNIQUE constraint failed');
+    const duplicate = error.code === '23505' || error.message?.includes('UNIQUE constraint failed');
     console.error('Error updating employee:', error.message);
     res.status(duplicate ? 409 : 500).json({
       error: duplicate ? 'Ya existe un empleado con ese legajo' : 'No se pudo actualizar el empleado'
@@ -206,7 +208,7 @@ async function createEmployeeHandler(req, res) {
 
     try {
       faceResult = await addCapturedFace(image, comprefaceSubject);
-      const employee = createEmployee({
+      const employee = await createEmployee({
         displayName,
         employeeCode: normalizedCode,
         comprefaceSubject,
@@ -232,7 +234,7 @@ async function createEmployeeHandler(req, res) {
       throw error;
     }
   } catch (error) {
-    const duplicate = error.message?.includes('UNIQUE constraint failed');
+    const duplicate = error.code === '23505' || error.message?.includes('UNIQUE constraint failed');
     console.error('Error creating employee:', error.message);
     res.status(duplicate ? 409 : (error.statusCode || 500)).json({
       error: duplicate ? 'Ya existe un empleado con ese legajo' : error.message
@@ -254,13 +256,13 @@ app.post('/recognize', async (req, res) => {
     let checkIn = null;
     for (const face of result.result || []) {
       for (const subject of face.subjects || []) {
-        const employee = getEmployeeBySubject(subject.subject);
+        const employee = await getEmployeeBySubject(subject.subject);
         if (employee) {
           subject.displayName = employee.displayName;
           subject.employeeCode = employee.employeeCode;
           if (!matchedEmployee) {
             matchedEmployee = employee;
-            checkIn = createCheckIn({
+            checkIn = await createCheckIn({
               employeeId: employee.id,
               similarity: subject.similarity,
               detectionProbability: face.box?.probability
@@ -277,30 +279,30 @@ app.post('/recognize', async (req, res) => {
 });
 
 app.get('/api/health', async (_req, res) => {
-  try {
-    const { subjects } = await checkRecognitionService();
-    res.json({
-      status: adminConfiguration.configured ? 'ok' : 'degraded',
-      services: {
-        backend: 'ok',
-        compreface: 'ok',
-        admin: adminConfiguration.configured ? 'ok' : 'not_configured'
-      },
-      subjects,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('CompreFace health check failed:', error.message);
-    res.status(503).json({
-      status: 'degraded',
-      services: {
-        backend: 'ok',
-        compreface: recognitionConfiguration.configured ? 'unavailable' : 'not_configured',
-        admin: adminConfiguration.configured ? 'ok' : 'not_configured'
-      },
-      timestamp: new Date().toISOString()
-    });
-  }
+  const [recognitionResult, databaseResult] = await Promise.allSettled([
+    checkRecognitionService(),
+    checkDatabaseConnection()
+  ]);
+  const recognitionOk = recognitionResult.status === 'fulfilled';
+  const databaseOk = databaseResult.status === 'fulfilled';
+  const healthy = recognitionOk && databaseOk && adminConfiguration.configured;
+
+  if (!recognitionOk) console.error('CompreFace health check failed:', recognitionResult.reason?.message);
+  if (!databaseOk) console.error('Database health check failed:', databaseResult.reason?.message);
+
+  res.status(recognitionOk && databaseOk ? 200 : 503).json({
+    status: healthy ? 'ok' : 'degraded',
+    services: {
+      backend: 'ok',
+      database: databaseOk ? databaseDriver : 'unavailable',
+      compreface: recognitionOk
+        ? 'ok'
+        : (recognitionConfiguration.configured ? 'unavailable' : 'not_configured'),
+      admin: adminConfiguration.configured ? 'ok' : 'not_configured'
+    },
+    ...(recognitionOk ? { subjects: recognitionResult.value.subjects } : {}),
+    timestamp: new Date().toISOString()
+  });
 });
 
 app.get('/api/health/live', (_req, res) => {

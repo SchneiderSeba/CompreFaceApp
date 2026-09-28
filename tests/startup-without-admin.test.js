@@ -7,12 +7,13 @@ let closeDatabase;
 
 before(async () => {
   process.env.DATABASE_PATH = ':memory:';
+  delete process.env.DATABASE_URL;
   process.env.ADMIN_USERNAME = '';
   process.env.ADMIN_PASSWORD = '';
   process.env.COMPRE_FACE_API_KEY = '';
   process.env.COMPREFACE_API_KEY_ENV = 'COMPRE_FACE_API_KEY';
 
-  const databaseModule = await import('../database.js');
+  const databaseModule = await import('../database-provider.js');
   closeDatabase = databaseModule.closeDatabase;
 
   const { app } = await import('../index.js');
@@ -26,7 +27,7 @@ after(async () => {
   await new Promise((resolve, reject) => {
     server.close((error) => error ? reject(error) : resolve());
   });
-  closeDatabase();
+  await closeDatabase();
 });
 
 test('backend remains live without optional production credentials', async () => {

@@ -9,6 +9,7 @@ let createCheckIn;
 
 before(async () => {
   process.env.DATABASE_PATH = ':memory:';
+  delete process.env.DATABASE_URL;
   process.env.ADMIN_USERNAME = 'admin-test';
   process.env.ADMIN_PASSWORD = 'a-strong-test-password';
   process.env.ADMIN_DISPLAY_NAME = 'Admin Test';
@@ -16,16 +17,16 @@ before(async () => {
   process.env.COMPREFACE_API_KEY_ENV = 'COMPRE_FACE_API_KEY';
   process.env.CLIENT_ORIGIN = '';
 
-  const databaseModule = await import('../database.js');
+  const databaseModule = await import('../database-provider.js');
   closeDatabase = databaseModule.closeDatabase;
   createCheckIn = databaseModule.createCheckIn;
-  const seededEmployee = databaseModule.createEmployee({
+  const seededEmployee = await databaseModule.createEmployee({
     displayName: 'Empleado Test',
     employeeCode: 'EMP-TEST',
     comprefaceSubject: 'employee_EMP-TEST',
     comprefaceImageId: 'test-image'
   });
-  const seededCheckIn = createCheckIn({
+  const seededCheckIn = await createCheckIn({
     employeeId: seededEmployee.id,
     similarity: 0.96,
     detectionProbability: 0.99
@@ -53,7 +54,7 @@ after(async () => {
   await new Promise((resolve, reject) => {
     server.close((error) => error ? reject(error) : resolve());
   });
-  closeDatabase();
+  await closeDatabase();
 });
 
 test('rejects invalid admin credentials', async () => {
