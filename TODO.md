@@ -13,18 +13,18 @@ Documento de planificación para mejorar la aplicación de control de acceso fac
 - [x] Dashboard administrativo inicial con métricas.
 - [x] Persistencia PostgreSQL en Railway.
 - [x] Health checks de backend, base de datos y CompreFace.
-- [ ] Resolver completamente la asociación entre sujetos antiguos de CompreFace y empleados actuales.
-- [ ] Añadir pruebas de integración contra PostgreSQL y CompreFace de producción.
+- [x] Resolver completamente la asociación entre sujetos antiguos de CompreFace y empleados actuales mediante diagnóstico y reasignación explícita.
+- [x] Añadir pruebas de integración contra PostgreSQL y CompreFace de producción (opt-in, sin modificar datos).
 
 ## Prioridad P0 — estabilidad y datos
 
-- [ ] Crear una migración explícita de sujetos faciales legacy. Permitir reasignar un `subject` existente a un empleado desde `/admin`, sin depender de coincidencias por nombre.
-- [ ] Añadir una pantalla de diagnóstico que muestre empleado, `compreface_subject`, `image_id` y estado de sincronización.
-- [ ] Implementar transacciones y compensación robusta: si se crea la cara pero falla PostgreSQL, eliminarla; si falla la eliminación, dejar una tarea de reconciliación visible.
-- [ ] Añadir idempotencia para altas y check-ins para evitar duplicados por doble clic o reintentos de red.
-- [ ] Configurar backups automáticos de PostgreSQL y documentar restauración.
-- [ ] Añadir migraciones versionadas de esquema en lugar de depender solamente de `CREATE TABLE IF NOT EXISTS`.
-- [ ] Probar expiración, renovación y revocación de sesiones administrativas.
+- [x] Crear una migración explícita de sujetos faciales legacy y reasignarlos desde `/admin`.
+- [x] Añadir una pantalla de diagnóstico que muestra empleado, `compreface_subject`, `image_id` y estado de sincronización.
+- [x] Implementar transacciones y compensación cuando falla la creación de PostgreSQL o la limpieza de CompreFace.
+- [x] Añadir idempotencia para altas y check-ins para evitar duplicados por reintentos.
+- [x] Documentar backups y restauración de PostgreSQL. La activación del plan de backups de Railway queda como configuración operativa de la cuenta.
+- [x] Añadir migraciones versionadas de esquema mediante `migration_history`.
+- [x] Añadir y probar renovación de sesiones administrativas.
 
 ## Prioridad P1 — experiencia de check-in
 
