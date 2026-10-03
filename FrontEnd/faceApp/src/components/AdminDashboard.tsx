@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { AddManually } from './AddManually';
-import type { AuthUser, DashboardStats, Employee } from '../types';
+import type { AuthUser, DashboardStats, Employee, FaceDiagnostic } from '../types';
 import './AdminDashboard.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://comprefaceapp-production-a8a0.up.railway.app';
@@ -38,6 +38,10 @@ export function AdminDashboard({
   const [editCode, setEditCode] = useState('');
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [diagnostics, setDiagnostics] = useState<FaceDiagnostic[]>([]);
+  const [diagnosticSubject, setDiagnosticSubject] = useState('');
+  const [diagnosticEmployeeId, setDiagnosticEmployeeId] = useState<number | null>(null);
+  const [diagnosticSaving, setDiagnosticSaving] = useState(false);
 
   const handleError = useCallback((unknownError: unknown) => {
     if (axios.isAxiosError(unknownError)) {
@@ -52,12 +56,14 @@ export function AdminDashboard({
   const loadDashboard = useCallback(async () => {
     setError(null);
     try {
-      const [employeeResponse, statsResponse] = await Promise.all([
+      const [employeeResponse, statsResponse, diagnosticsResponse] = await Promise.all([
         axios.get<{ employees: Employee[] }>(`${API_URL}/api/employees`, { withCredentials: true }),
-        axios.get<DashboardStats>(`${API_URL}/api/admin/dashboard`, { withCredentials: true })
+        axios.get<DashboardStats>(`${API_URL}/api/admin/dashboard`, { withCredentials: true }),
+        axios.get<{ diagnostics: FaceDiagnostic[] }>(`${API_URL}/api/admin/face-diagnostics`, { withCredentials: true })
       ]);
       setEmployees(employeeResponse.data.employees);
       setStats(statsResponse.data);
+      setDiagnostics(diagnosticsResponse.data.diagnostics);
     } catch (unknownError) {
       setError(handleError(unknownError));
     } finally {
@@ -83,6 +89,19 @@ export function AdminDashboard({
     setEditName(employee.displayName);
     setEditCode(employee.employeeCode);
     setEditError(null);
+    setDiagnosticSubject(employee.comprefaceSubject);
+  };
+
+  const saveDiagnosticSubject = async (diagnostic: FaceDiagnostic) => {
+    setDiagnosticSaving(true);
+    try {
+      await axios.patch(`${API_URL}/api/admin/face-diagnostics/${diagnostic.employee.id}`, { subject: diagnosticSubject }, { withCredentials: true });
+      await loadDashboard();
+    } catch (unknownError) {
+      setEditError(handleError(unknownError));
+    } finally {
+      setDiagnosticSaving(false);
+    }
   };
 
   const employeeCreated = (employee: Employee) => {
@@ -257,6 +276,23 @@ export function AdminDashboard({
                   </tbody>
                 </table>
                 {employees.length === 0 && <p className="admin-empty">No hay empleados registrados.</p>}
+              </div>
+            </section>
+            <section className="dashboard-panel employee-table-panel">
+              <div className="panel-heading"><div><p className="app-kicker">CompreFace</p><h3>Diagnóstico de sincronización</h3></div></div>
+              <div className="employee-table-wrap">
+                <table className="employee-table">
+                  <thead><tr><th>Empleado</th><th>Subject</th><th>Image ID</th><th>Estado</th><th>Acción</th></tr></thead>
+                  <tbody>{diagnostics.map((diagnostic) => (
+                    <tr key={diagnostic.employee.id}>
+                      <td>{diagnostic.employee.displayName}</td>
+                      <td><input aria-label={`Subject de ${diagnostic.employee.displayName}`} value={diagnosticEmployeeId === diagnostic.employee.id ? diagnosticSubject : diagnostic.subject} onChange={(event) => { setDiagnosticEmployeeId(diagnostic.employee.id); setDiagnosticSubject(event.target.value); }} /></td>
+                      <td>{diagnostic.imageId || '—'}</td>
+                      <td>{diagnostic.synchronization === 'linked' ? 'Vinculado' : 'Incompleto'}</td>
+                      <td><button className="secondary-action" disabled={diagnosticSaving || !diagnosticSubject || diagnosticEmployeeId !== diagnostic.employee.id} onClick={() => void saveDiagnosticSubject(diagnostic)}>Guardar</button></td>
+                    </tr>
+                  ))}</tbody>
+                </table>
               </div>
             </section>
           </div>

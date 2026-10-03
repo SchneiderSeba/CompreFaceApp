@@ -77,7 +77,7 @@ export const WebCaptureV2: React.FC<WebCaptureV2Props> = ({
                 image: screenshot,
                 name: newFaceName,
                 employeeCode: code
-            }, { withCredentials: true });
+            }, { withCredentials: true, headers: { 'Idempotency-Key': crypto.randomUUID() } });
             setResultManually(response.data);
             setResultRecognize(null);
             setNewFaceName('');
@@ -97,7 +97,7 @@ export const WebCaptureV2: React.FC<WebCaptureV2Props> = ({
         try {
             const response = await axios.post<RecognitionResponse>(`${API_URL}/recognize`, {
                 image: screenshot
-            });
+            }, { headers: { 'Idempotency-Key': crypto.randomUUID() } });
             console.log('Recognition result:', response.data);
             setResultRecognize(response.data);
             setResultManually(null);

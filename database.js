@@ -215,6 +215,14 @@ export function getUserBySession(token) {
   return publicUser(row);
 }
 
+export function refreshSession(token) {
+  const user = getUserBySession(token);
+  if (!user) return null;
+  const expiresAtMs = Date.now() + 8 * 60 * 60 * 1000;
+  database.prepare('UPDATE sessions SET expires_at = ? WHERE token_hash = ?').run(expiresAtMs, hashToken(token));
+  return { ...user, expiresAt: new Date(expiresAtMs).toISOString() };
+}
+
 export function deleteSession(token) {
   if (token) database.prepare('DELETE FROM sessions WHERE token_hash = ?').run(hashToken(token));
 }
@@ -243,6 +251,23 @@ export function getEmployeeBySubject(subject) {
     GROUP BY empleados.id
     LIMIT 1
   `).get(subject));
+}
+
+export function reassignEmployeeSubject({ employeeId, comprefaceSubject, comprefaceImageId = null }) {
+  const result = database.prepare(`
+    UPDATE empleados SET compreface_subject = ?, compreface_image_id = COALESCE(?, compreface_image_id), updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(comprefaceSubject, comprefaceImageId, employeeId);
+  return result.changes ? getEmployeeById(employeeId) : null;
+}
+
+export function getFaceDiagnostics() {
+  return listEmployees().map((employee) => ({
+    employee,
+    subject: employee.comprefaceSubject,
+    imageId: null,
+    synchronization: employee.comprefaceSubject ? 'linked' : 'incomplete'
+  }));
 }
 
 export function getEmployeeById(id) {

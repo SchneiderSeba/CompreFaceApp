@@ -1,3 +1,22 @@
+## Backups, restauración y pruebas de integración
+
+La base PostgreSQL de Railway es persistente mediante su volumen, pero la persistencia no sustituye un backup. En producción se debe habilitar el plan de backups/PITR de Railway o ejecutar un backup lógico periódico desde un entorno seguro. Los dumps nunca deben guardarse en el repositorio.
+
+Procedimiento recomendado:
+
+1. Crear un backup lógico antes de cambios de esquema: `pg_dump "$DATABASE_URL" --format=custom --file=faceapp-YYYYMMDD-HHmm.dump`.
+2. Guardarlo en almacenamiento privado, cifrado y con retención.
+3. Restaurar en una base destino con `pg_restore --clean --if-exists --dbname="$DATABASE_URL" faceapp.dump` durante una ventana de mantenimiento.
+4. Verificar `/api/health`, login, empleados y un check-in de prueba.
+
+Las migraciones PostgreSQL se ejecutan en orden desde `migration_history` y son idempotentes. Deben probarse primero en staging.
+
+Las pruebas contra producción están en `tests/integration.production.test.js` y son opt-in:
+
+```text
+RUN_INTEGRATION_TESTS=true npm test -- tests/integration.production.test.js
+```
+
 <div align="center">
 
 # 🧠 FaceApp

@@ -39,6 +39,13 @@ export interface Employee {
   lastCheckInAt: string | null
 }
 
+export interface FaceDiagnostic {
+  employee: Employee
+  subject: string
+  imageId: string | null
+  synchronization: 'linked' | 'incomplete'
+}
+
 export interface DashboardStats {
   totals: {
     employees: number

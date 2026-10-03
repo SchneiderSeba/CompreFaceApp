@@ -94,6 +94,32 @@ test('allows an admin to list employees', async () => {
   assert.ok(body.employees[0].lastCheckInAt);
 });
 
+test('allows admins to inspect and reassign facial subjects', async () => {
+  const diagnosticsResponse = await fetch(`${baseUrl}/api/admin/face-diagnostics`, {
+    headers: { cookie: adminCookie }
+  });
+  assert.equal(diagnosticsResponse.status, 200);
+  const diagnostics = await diagnosticsResponse.json();
+  assert.equal(diagnostics.diagnostics[0].subject, 'employee_EMP-TEST');
+
+  const response = await fetch(`${baseUrl}/api/admin/face-diagnostics/1`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', cookie: adminCookie },
+    body: JSON.stringify({ subject: 'Sebastian' })
+  });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).employee.comprefaceSubject, 'Sebastian');
+});
+
+test('refreshes an active admin session', async () => {
+  const response = await fetch(`${baseUrl}/api/auth/refresh`, {
+    method: 'POST',
+    headers: { cookie: adminCookie }
+  });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).user.role, 'admin');
+});
+
 test('protects dashboard statistics from anonymous requests', async () => {
   const response = await fetch(`${baseUrl}/api/admin/dashboard`);
   assert.equal(response.status, 401);

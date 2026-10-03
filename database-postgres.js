@@ -110,6 +110,7 @@ async function createSchema() {
       legajo TEXT NOT NULL UNIQUE,
       compreface_subject TEXT NOT NULL UNIQUE,
       compreface_image_id TEXT,
+      idempotency_key TEXT UNIQUE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
@@ -119,6 +120,7 @@ async function createSchema() {
       empleado_id BIGINT NOT NULL REFERENCES empleados(id) ON DELETE CASCADE,
       similarity DOUBLE PRECISION,
       detection_probability DOUBLE PRECISION,
+      idempotency_key TEXT UNIQUE,
       checked_in_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -132,6 +134,36 @@ async function createSchema() {
     CREATE INDEX IF NOT EXISTS idx_check_ins_empleado_id ON check_ins(empleado_id);
     CREATE INDEX IF NOT EXISTS idx_check_ins_checked_in_at ON check_ins(checked_in_at);
   `);
+}
+
+async function applySchemaMigrations() {
+  const migrations = [
+    ['schema_v2_idempotency', async (client) => {
+      await client.query('ALTER TABLE empleados ADD COLUMN IF NOT EXISTS idempotency_key TEXT');
+      await client.query('ALTER TABLE check_ins ADD COLUMN IF NOT EXISTS idempotency_key TEXT');
+      await client.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_empleados_idempotency_key ON empleados(idempotency_key) WHERE idempotency_key IS NOT NULL');
+      await client.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_check_ins_idempotency_key ON check_ins(idempotency_key) WHERE idempotency_key IS NOT NULL');
+    }],
+    ['schema_v3_subject_diagnostics', async (client) => {
+      await client.query('CREATE INDEX IF NOT EXISTS idx_empleados_compreface_subject ON empleados(compreface_subject)');
+    }]
+  ];
+  for (const [migrationKey, apply] of migrations) {
+    const existing = await database.query('SELECT 1 FROM migration_history WHERE migration_key = $1 LIMIT 1', [migrationKey]);
+    if (existing.rowCount) continue;
+    const client = await database.connect();
+    try {
+      await client.query('BEGIN');
+      await apply(client);
+      await client.query('INSERT INTO migration_history (migration_key, details) VALUES ($1, $2)', [migrationKey, JSON.stringify({ version: migrationKey })]);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
 }
 
 function sqliteTableExists(legacy, tableName) {
@@ -259,6 +291,7 @@ async function seedAdmin() {
 }
 
 await createSchema();
+await applySchemaMigrations();
 await migrateLegacySqlite();
 await seedAdmin();
 console.log('✅ Base de datos inicializada con PostgreSQL.');
@@ -296,15 +329,31 @@ export async function getUserBySession(token) {
   return publicUser(result.rows[0]);
 }
 
+export async function refreshSession(token) {
+  const user = await getUserBySession(token);
+  if (!user) return null;
+  const expiresAtMs = Date.now() + 8 * 60 * 60 * 1000;
+  await database.query('UPDATE sessions SET expires_at = $1 WHERE token_hash = $2', [expiresAtMs, hashToken(token)]);
+  return { ...user, expiresAt: new Date(expiresAtMs).toISOString() };
+}
+
 export async function deleteSession(token) {
   if (token) await database.query('DELETE FROM sessions WHERE token_hash = $1', [hashToken(token)]);
 }
 
 export async function createEmployee({ displayName, employeeCode, comprefaceSubject, comprefaceImageId }) {
+  return createEmployeeWithIdempotency({ displayName, employeeCode, comprefaceSubject, comprefaceImageId });
+}
+
+export async function createEmployeeWithIdempotency({ displayName, employeeCode, comprefaceSubject, comprefaceImageId, idempotencyKey }) {
+  if (idempotencyKey) {
+    const existing = await database.query('SELECT id FROM empleados WHERE idempotency_key = $1 LIMIT 1', [idempotencyKey]);
+    if (existing.rowCount) return getEmployeeById(existing.rows[0].id);
+  }
   const result = await database.query(`
-    INSERT INTO empleados (nombre_completo, legajo, compreface_subject, compreface_image_id)
-    VALUES ($1, $2, $3, $4) RETURNING id
-  `, [displayName, employeeCode, comprefaceSubject, comprefaceImageId]);
+    INSERT INTO empleados (nombre_completo, legajo, compreface_subject, compreface_image_id, idempotency_key)
+    VALUES ($1, $2, $3, $4, $5) RETURNING id
+  `, [displayName, employeeCode, comprefaceSubject, comprefaceImageId, idempotencyKey || null]);
   return getEmployeeById(result.rows[0].id);
 }
 
@@ -325,6 +374,30 @@ export async function getEmployeeBySubject(subject) {
   return publicEmployee(result.rows[0]);
 }
 
+export async function reassignEmployeeSubject({ employeeId, comprefaceSubject, comprefaceImageId = null }) {
+  const result = await database.query(`
+    UPDATE empleados
+    SET compreface_subject = $1, compreface_image_id = COALESCE($2, compreface_image_id), updated_at = CURRENT_TIMESTAMP
+    WHERE id = $3 RETURNING id
+  `, [comprefaceSubject, comprefaceImageId, employeeId]);
+  return result.rowCount ? getEmployeeById(employeeId) : null;
+}
+
+export async function getFaceDiagnostics() {
+  const result = await database.query(`
+    SELECT empleados.*, COUNT(check_ins.id) AS check_in_count,
+      MAX(check_ins.checked_in_at) AS last_check_in_at
+    FROM empleados LEFT JOIN check_ins ON check_ins.empleado_id = empleados.id
+    GROUP BY empleados.id ORDER BY LOWER(empleados.nombre_completo)
+  `);
+  return result.rows.map((row) => ({
+    employee: publicEmployee(row),
+    imageId: row.compreface_image_id,
+    subject: row.compreface_subject,
+    synchronization: row.compreface_subject && row.compreface_image_id ? 'linked' : 'incomplete'
+  }));
+}
+
 export async function getEmployeeById(id) {
   const result = await database.query(`
     ${employeeWithActivitySelect}
@@ -342,12 +415,19 @@ export async function updateEmployee({ id, displayName, employeeCode }) {
   return result.rowCount ? getEmployeeById(id) : null;
 }
 
-export async function createCheckIn({ employeeId, similarity, detectionProbability }) {
+export async function createCheckIn({ employeeId, similarity, detectionProbability, idempotencyKey }) {
+  if (idempotencyKey) {
+    const existing = await database.query('SELECT id, empleado_id, similarity, detection_probability, checked_in_at FROM check_ins WHERE idempotency_key = $1 LIMIT 1', [idempotencyKey]);
+    if (existing.rowCount) {
+      const row = existing.rows[0];
+      return { id: Number(row.id), employeeId: Number(row.empleado_id), similarity: row.similarity, detectionProbability: row.detection_probability, checkedInAt: serializedDate(row.checked_in_at) };
+    }
+  }
   const result = await database.query(`
-    INSERT INTO check_ins (empleado_id, similarity, detection_probability)
-    VALUES ($1, $2, $3)
+    INSERT INTO check_ins (empleado_id, similarity, detection_probability, idempotency_key)
+    VALUES ($1, $2, $3, $4)
     RETURNING id, empleado_id, similarity, detection_probability, checked_in_at
-  `, [employeeId, similarity ?? null, detectionProbability ?? null]);
+  `, [employeeId, similarity ?? null, detectionProbability ?? null, idempotencyKey || null]);
   const row = result.rows[0];
   return {
     id: Number(row.id),

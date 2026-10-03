@@ -18,11 +18,15 @@ import {
   checkDatabaseConnection,
   createCheckIn,
   createEmployee,
+  createEmployeeWithIdempotency,
   createSession,
   deleteSession,
   findAdminByUsername,
   getDashboardStats,
   getEmployeeBySubject,
+  getFaceDiagnostics,
+  reassignEmployeeSubject,
+  refreshSession,
   getUserBySession,
   listEmployees,
   updateEmployee,
@@ -147,6 +151,13 @@ app.post('/api/auth/logout', async (req, res) => {
   res.status(204).end();
 });
 
+app.post('/api/auth/refresh', async (req, res) => {
+  const user = await refreshSession(getSessionToken(req));
+  if (!user) return res.status(401).json({ error: 'No autenticado' });
+  setSessionCookie(res, getSessionToken(req));
+  res.json({ user });
+});
+
 app.get('/api/employees', requireAdmin, async (_req, res) => {
   res.json({ employees: await listEmployees() });
 });
@@ -185,6 +196,27 @@ app.patch('/api/employees/:id', requireAdmin, async (req, res) => {
   }
 });
 
+app.get('/api/admin/face-diagnostics', requireAdmin, async (_req, res) => {
+  res.json({ diagnostics: await getFaceDiagnostics() });
+});
+
+app.patch('/api/admin/face-diagnostics/:id', requireAdmin, async (req, res) => {
+  const employeeId = Number.parseInt(req.params.id, 10);
+  const subject = typeof req.body.subject === 'string' ? req.body.subject.trim() : '';
+  const imageId = typeof req.body.imageId === 'string' ? req.body.imageId.trim() : null;
+  if (!Number.isInteger(employeeId) || employeeId <= 0 || !/^[^\s]{1,120}$/.test(subject)) {
+    return res.status(400).json({ error: 'El sujeto de CompreFace no es válido' });
+  }
+  try {
+    const employee = await reassignEmployeeSubject({ employeeId, comprefaceSubject: subject, comprefaceImageId: imageId });
+    if (!employee) return res.status(404).json({ error: 'Empleado no encontrado' });
+    res.json({ employee });
+  } catch (error) {
+    const duplicate = error.code === '23505' || error.message?.includes('UNIQUE constraint failed');
+    res.status(duplicate ? 409 : 500).json({ error: duplicate ? 'Ese sujeto ya está vinculado a otro empleado' : 'No se pudo reasignar el sujeto' });
+  }
+});
+
 async function createEmployeeHandler(req, res) {
   try {
     const { image, name, employeeCode } = req.body;
@@ -208,11 +240,12 @@ async function createEmployeeHandler(req, res) {
 
     try {
       faceResult = await addCapturedFace(image, comprefaceSubject);
-      const employee = await createEmployee({
+      const employee = await createEmployeeWithIdempotency({
         displayName,
         employeeCode: normalizedCode,
         comprefaceSubject,
-        comprefaceImageId: faceResult.image_id
+        comprefaceImageId: faceResult.image_id,
+        idempotencyKey: req.get('Idempotency-Key')?.trim() || null
       });
 
       res.status(201).json({
@@ -265,7 +298,8 @@ app.post('/recognize', async (req, res) => {
             checkIn = await createCheckIn({
               employeeId: employee.id,
               similarity: subject.similarity,
-              detectionProbability: face.box?.probability
+              detectionProbability: face.box?.probability,
+              idempotencyKey: req.get('Idempotency-Key')?.trim() || null
             });
           }
         }

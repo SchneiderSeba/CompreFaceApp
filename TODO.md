@@ -1,0 +1,118 @@
+# TODO — Face Recognition Check-in
+
+Documento de planificación para mejorar la aplicación de control de acceso facial.
+
+## Estado actual
+
+- [x] Frontend responsive para escritorio, tablets y celulares.
+- [x] Captura desde cámara y carga de imágenes.
+- [x] Reconocimiento facial mediante CompreFace.
+- [x] Login administrativo protegido por sesión/cookie.
+- [x] Alta y edición básica de empleados.
+- [x] Registro de check-ins.
+- [x] Dashboard administrativo inicial con métricas.
+- [x] Persistencia PostgreSQL en Railway.
+- [x] Health checks de backend, base de datos y CompreFace.
+- [ ] Resolver completamente la asociación entre sujetos antiguos de CompreFace y empleados actuales.
+- [ ] Añadir pruebas de integración contra PostgreSQL y CompreFace de producción.
+
+## Prioridad P0 — estabilidad y datos
+
+- [ ] Crear una migración explícita de sujetos faciales legacy. Permitir reasignar un `subject` existente a un empleado desde `/admin`, sin depender de coincidencias por nombre.
+- [ ] Añadir una pantalla de diagnóstico que muestre empleado, `compreface_subject`, `image_id` y estado de sincronización.
+- [ ] Implementar transacciones y compensación robusta: si se crea la cara pero falla PostgreSQL, eliminarla; si falla la eliminación, dejar una tarea de reconciliación visible.
+- [ ] Añadir idempotencia para altas y check-ins para evitar duplicados por doble clic o reintentos de red.
+- [ ] Configurar backups automáticos de PostgreSQL y documentar restauración.
+- [ ] Añadir migraciones versionadas de esquema en lugar de depender solamente de `CREATE TABLE IF NOT EXISTS`.
+- [ ] Probar expiración, renovación y revocación de sesiones administrativas.
+
+## Prioridad P1 — experiencia de check-in
+
+- [ ] Mejorar el flujo de estados: cámara lista, procesando, rostro detectado, coincidencia, no coincidencia y error.
+- [ ] Mostrar un mensaje accionable cuando CompreFace reconoce una cara sin empleado vinculado.
+- [ ] Evitar que el usuario pueda iniciar varios reconocimientos simultáneos.
+- [ ] Añadir reintento controlado ante errores temporales de red o CompreFace.
+- [ ] Configurar umbral de similitud desde administración y mostrar el motivo de rechazo.
+- [ ] Añadir soporte para seleccionar cámara frontal/trasera en celulares y tablets.
+- [ ] Mejorar accesibilidad: foco visible, navegación con teclado, labels, contraste y mensajes para lectores de pantalla.
+- [ ] Añadir modo kiosco/pantalla completa y reinicio automático después de un check-in.
+- [ ] Mostrar fecha, hora y zona horaria del check-in de forma consistente.
+- [ ] Añadir internacionalización (español/inglés) y formatos regionales configurables.
+
+## Prioridad P1 — administración de empleados
+
+- [ ] Completar la tabla con búsqueda, filtros, ordenamiento y paginación.
+- [ ] Modal de empleado con edición completa y validación en tiempo real.
+- [ ] Permitir reemplazar/eliminar una foto facial y volver a registrar el sujeto.
+- [ ] Añadir baja lógica/reactivación de empleados, conservando el historial.
+- [ ] Importar empleados desde CSV/XLSX con vista previa y validación de duplicados.
+- [ ] Exportar empleados y check-ins a CSV/PDF.
+- [ ] Añadir auditoría: quién creó, editó o desactivó cada empleado y cuándo.
+- [ ] Añadir roles y permisos futuros (administrador, supervisor, solo lectura).
+- [ ] Confirmaciones explícitas y protección contra eliminación accidental.
+
+## Prioridad P1 — dashboard y reportes
+
+- [ ] Gráficos por día, semana, mes y rango personalizado.
+- [ ] Métricas de primeros ingresos, retrasos, ausencias y empleados activos.
+- [ ] Filtro por empleado, legajo y rango de fechas.
+- [ ] Vista de detalle de cada check-in con imagen, similitud y probabilidad de detección.
+- [ ] Reporte diario descargable y envío programado por correo.
+- [ ] Paginación server-side para historiales grandes.
+
+## Prioridad P1 — seguridad y privacidad
+
+- [ ] Aplicar rate limiting por IP y por usuario en login, captura y reconocimiento.
+- [ ] Añadir CSRF protection si se mantienen cookies de sesión.
+- [ ] Rotar `SESSION_SECRET` y documentar gestión de secretos en Railway.
+- [ ] No registrar imágenes, tokens ni credenciales en logs.
+- [ ] Cifrar o restringir el acceso a imágenes temporales y limpiar archivos con TTL.
+- [ ] Definir retención y borrado de datos biométricos conforme a la normativa aplicable.
+- [ ] Registrar consentimiento, finalidad y fecha de alta del empleado cuando corresponda.
+- [ ] Añadir Content Security Policy, cabeceras de seguridad y auditoría de CORS.
+- [ ] Revisar permisos de PostgreSQL con un usuario de aplicación de privilegios mínimos.
+
+## Prioridad P2 — infraestructura y operación
+
+- [ ] Añadir despliegues separados para staging y producción.
+- [ ] Configurar healthcheck de Railway para impedir despliegues rotos.
+- [ ] Añadir logs estructurados con request ID y duración de llamadas a CompreFace.
+- [ ] Añadir monitoreo, alertas y métricas de latencia/error.
+- [ ] Configurar límites de CPU, memoria y pool de conexiones PostgreSQL.
+- [ ] Documentar procedimiento de rollback y recuperación ante caída de CompreFace.
+- [ ] Añadir Dockerfile reproducible para backend y configuración de desarrollo local.
+- [ ] Automatizar CI: lint, tests, build frontend, pruebas de seguridad y migraciones.
+- [ ] Añadir pruebas de carga para múltiples tablets haciendo check-in al mismo tiempo.
+
+## Prioridad P2 — calidad de código
+
+- [ ] Separar rutas, servicios, validadores y repositorios en módulos independientes.
+- [ ] Sustituir strings de error por códigos y mensajes centralizados.
+- [ ] Añadir validación de esquemas de request/response con una librería común.
+- [ ] Tipar completamente las respuestas de API en frontend y backend.
+- [ ] Documentar API con OpenAPI/Swagger.
+- [ ] Añadir cobertura de tests para PostgreSQL, autenticación, duplicados y errores de CompreFace.
+- [ ] Añadir pruebas E2E de login, alta, reconocimiento y redirección a `/welcome`.
+- [ ] Eliminar código experimental/no utilizado y revisar dependencias periódicamente.
+
+## Ideas de producto futuras
+
+- [ ] Multiempresa o múltiples sedes, con aislamiento de datos por organización.
+- [ ] Turnos, horarios y reglas de tolerancia.
+- [ ] Notificaciones ante entradas fuera de horario.
+- [ ] Integración con sistemas de RR. HH. o lectores de tarjetas.
+- [ ] Aplicación PWA instalable con funcionamiento degradado sin conexión.
+- [ ] Webhooks para enviar eventos de check-in a otros sistemas.
+- [ ] Detección de vida anti-spoofing y políticas contra fotografías/pantallas.
+- [ ] Comparación de modelos de reconocimiento y configuración por sede.
+
+## Orden recomendado de ejecución
+
+1. Corregir la vinculación de sujetos legacy y añadir diagnóstico de sincronización.
+2. Añadir pruebas de integración y E2E del flujo completo de check-in.
+3. Implementar backups, migraciones versionadas y auditoría.
+4. Completar búsqueda, filtros, edición y baja de empleados.
+5. Mejorar dashboard y exportación de reportes.
+6. Endurecer seguridad, privacidad, observabilidad y CI/CD.
+7. Incorporar funciones avanzadas de turnos, multiempresa y anti-spoofing.
+
