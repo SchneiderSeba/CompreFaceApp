@@ -13,6 +13,10 @@ export const deleteSession = (...args) => Promise.resolve(database.deleteSession
 export const createEmployee = (...args) => Promise.resolve(database.createEmployee(...args));
 export const createEmployeeWithIdempotency = (...args) => Promise.resolve((database.createEmployeeWithIdempotency || database.createEmployee)(...args));
 export const listEmployees = (...args) => Promise.resolve(database.listEmployees(...args));
+export const listEmployeesPage = (...args) => Promise.resolve(database.listEmployeesPage ? database.listEmployeesPage(...args) : { page: 1, pageSize: 20, total: 0, employees: database.listEmployees(...args) });
+export const setEmployeeActive = (...args) => Promise.resolve(database.setEmployeeActive ? database.setEmployeeActive(...args) : null);
+export const updateEmployeeFace = (...args) => Promise.resolve(database.updateEmployeeFace ? database.updateEmployeeFace(...args) : null);
+export const listAuditLog = (...args) => Promise.resolve(database.listAuditLog ? database.listAuditLog(...args) : []);
 export const getEmployeeBySubject = (...args) => Promise.resolve(database.getEmployeeBySubject(...args));
 export const reassignEmployeeSubject = (...args) => Promise.resolve(database.reassignEmployeeSubject ? database.reassignEmployeeSubject(...args) : null);
 export const getFaceDiagnostics = (...args) => Promise.resolve(database.getFaceDiagnostics ? database.getFaceDiagnostics(...args) : []);

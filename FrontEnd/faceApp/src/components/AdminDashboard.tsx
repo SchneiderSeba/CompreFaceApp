@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { AddManually } from './AddManually';
 import type { AuthUser, DashboardStats, Employee, FaceDiagnostic, CheckInPage } from '../types';
@@ -44,6 +44,10 @@ export function AdminDashboard({
   const [diagnosticSaving, setDiagnosticSaving] = useState(false);
   const [checkIns, setCheckIns] = useState<CheckInPage>({ page: 1, pageSize: 20, total: 0, items: [] });
   const [reportFilters, setReportFilters] = useState({ from: '', to: '', employeeId: '', period: 'week', page: '1' });
+  const [employeeSearch, setEmployeeSearch] = useState('');
+  const [employeeStatus, setEmployeeStatus] = useState('all');
+  const [employeeSort, setEmployeeSort] = useState('name');
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const handleError = useCallback((unknownError: unknown) => {
     if (axios.isAxiosError(unknownError)) {
@@ -114,6 +118,32 @@ export function AdminDashboard({
     void loadDashboard();
   };
 
+  const visibleEmployees = useMemo(() => employees
+    .filter((employee) => !employeeSearch || `${employee.displayName} ${employee.employeeCode}`.toLowerCase().includes(employeeSearch.toLowerCase()))
+    .filter((employee) => employeeStatus === 'all' || (employeeStatus === 'active' ? employee.active !== false : employee.active === false))
+    .slice().sort((a: Employee, b: Employee) => employeeSort === 'code' ? a.employeeCode.localeCompare(b.employeeCode) : employeeSort === 'created' ? b.createdAt.localeCompare(a.createdAt) : a.displayName.localeCompare(b.displayName)), [employees, employeeSearch, employeeSort, employeeStatus]);
+
+  const toggleEmployee = async (employee: Employee) => {
+    if (!window.confirm(`${employee.active === false ? 'Reactivar' : 'Desactivar'} a ${employee.displayName}? El historial se conservará.`)) return;
+    try {
+      await axios.patch(`${API_URL}/api/employees/${employee.id}/status`, { active: employee.active === false }, { withCredentials: true });
+      await loadDashboard();
+    } catch (unknownError) { setEditError(handleError(unknownError)); }
+  };
+
+  const importEmployees = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const data = await file.arrayBuffer();
+    const dataBase64 = btoa(String.fromCharCode(...new Uint8Array(data)));
+    try {
+      const response = await axios.post(`${API_URL}/api/admin/employees/import`, { fileName: file.name, dataBase64 }, { withCredentials: true });
+      alert(`Importados: ${response.data.imported}. Filas con error: ${response.data.errors.length}. Las caras deberán registrarse desde el panel.`);
+      await loadDashboard();
+    } catch (unknownError) { setEditError(handleError(unknownError)); }
+    event.target.value = '';
+  };
+
   const saveEmployee = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!selectedEmployee) return;
@@ -136,6 +166,28 @@ export function AdminDashboard({
     } finally {
       setSaving(false);
     }
+  };
+
+  const replaceFace = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !selectedEmployee) return;
+    const data = await file.arrayBuffer();
+    const image = `data:${file.type || 'image/jpeg'};base64,${btoa(String.fromCharCode(...new Uint8Array(data)))}`;
+    try {
+      await axios.post(`${API_URL}/api/employees/${selectedEmployee.id}/face`, { image }, { withCredentials: true });
+      await loadDashboard();
+      alert('Rostro reemplazado correctamente.');
+    } catch (unknownError) { setEditError(handleError(unknownError)); }
+    event.target.value = '';
+  };
+
+  const removeFace = async () => {
+    if (!selectedEmployee || !window.confirm('¿Eliminar el rostro facial de este empleado? El empleado y su historial se conservarán.')) return;
+    try {
+      await axios.delete(`${API_URL}/api/employees/${selectedEmployee.id}/face`, { withCredentials: true });
+      await loadDashboard();
+      setSelectedEmployee(null);
+    } catch (unknownError) { setEditError(handleError(unknownError)); }
   };
 
   const maxDaily = useMemo(
@@ -275,13 +327,14 @@ export function AdminDashboard({
             <section className="dashboard-panel employee-table-panel">
               <div className="panel-heading">
                 <div><p className="app-kicker">Base de datos</p><h3>Empleados registrados</h3></div>
-                <span className="table-count">{employees.length}</span>
+                <div className="employee-actions"><button className="secondary-action" onClick={() => importInputRef.current?.click()}>Importar CSV/XLSX</button><input ref={importInputRef} hidden type="file" accept=".csv,.xlsx,.xls" onChange={importEmployees} /><span className="table-count">{visibleEmployees.length}</span></div>
               </div>
+              <div className="employee-filters"><input placeholder="Buscar nombre o legajo" value={employeeSearch} onChange={(event) => setEmployeeSearch(event.target.value)} /><select value={employeeStatus} onChange={(event) => setEmployeeStatus(event.target.value)}><option value="all">Todos</option><option value="active">Activos</option><option value="inactive">Inactivos</option></select><select value={employeeSort} onChange={(event) => setEmployeeSort(event.target.value)}><option value="name">Ordenar por nombre</option><option value="code">Ordenar por legajo</option><option value="created">Más recientes</option></select></div>
               <div className="employee-table-wrap">
                 <table className="employee-table">
                   <thead><tr><th>Empleado</th><th>Legajo</th><th>Check-ins</th><th>Último ingreso</th><th>Alta</th></tr></thead>
                   <tbody>
-                    {employees.map((employee) => (
+                    {visibleEmployees.map((employee) => (
                       <tr key={employee.id}>
                         <td>
                           <button className="employee-name-button" onClick={() => openEmployee(employee)}>
@@ -289,10 +342,10 @@ export function AdminDashboard({
                             <strong>{employee.displayName}</strong>
                           </button>
                         </td>
-                        <td>{employee.employeeCode}</td>
+                        <td>{employee.employeeCode} {employee.active === false && <span className="status-pill">Inactivo</span>}</td>
                         <td>{employee.checkInCount}</td>
                         <td>{formatDateTime(employee.lastCheckInAt)}</td>
-                        <td>{formatDateTime(employee.createdAt)}</td>
+                        <td>{formatDateTime(employee.createdAt)}<button className="table-action" onClick={() => void toggleEmployee(employee)}>{employee.active === false ? 'Reactivar' : 'Desactivar'}</button></td>
                       </tr>
                     ))}
                   </tbody>
@@ -340,6 +393,7 @@ export function AdminDashboard({
                 <div><span>Registrado</span><strong>{formatDateTime(selectedEmployee.createdAt)}</strong></div>
                 <div><span>Última edición</span><strong>{formatDateTime(selectedEmployee.updatedAt)}</strong></div>
               </div>
+              <div className="face-management"><strong>Rostro facial</strong><span>{selectedEmployee.comprefaceImageId ? 'Registrado en CompreFace' : 'Sin rostro registrado'}</span><label className="secondary-action">{selectedEmployee.comprefaceImageId ? 'Reemplazar rostro' : 'Registrar rostro'}<input hidden type="file" accept="image/*" onChange={replaceFace} /></label>{selectedEmployee.comprefaceImageId && <button type="button" className="danger-action" onClick={() => void removeFace()}>Eliminar rostro</button>}</div>
               {editError && <p className="form-message form-message--error">{editError}</p>}
               <div className="modal-actions">
                 <button type="button" className="secondary-action" onClick={() => setSelectedEmployee(null)}>Cancelar</button>

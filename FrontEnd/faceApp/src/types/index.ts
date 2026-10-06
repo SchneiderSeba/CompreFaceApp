@@ -32,7 +32,9 @@ export interface Employee {
   displayName: string
   employeeCode: string
   role: 'employee'
+  active?: boolean
   comprefaceSubject: string
+  comprefaceImageId: string | null
   createdAt: string
   updatedAt: string
   checkInCount: number

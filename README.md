@@ -203,6 +203,7 @@ FaceApp envía las capturas al CompreFace auto-hosteado del proyecto:
 - **GET `/api/auth/me`** - Recupera la sesión activa
 - **POST `/api/auth/logout`** - Cierra e invalida la sesión
 - **GET `/api/employees`** - Lista empleados (solo admin)
+- **GET `/api/employees?search=&active=&sort=&page=&pageSize=`** - Lista filtrada y paginada de empleados.
 - **POST `/api/employees`** / **POST `/capture`** - Registra empleado y rostro (solo admin)
   - Body: `{ image: string (base64), name: string, employeeCode: string }`
   - Response: Detalles del rostro agregado con `image_id`
@@ -210,6 +211,10 @@ FaceApp envía las capturas al CompreFace auto-hosteado del proyecto:
 - **POST `/recognize`** - Busca coincidencias en la galería de rostros
   - Cuando el rostro coincide con un registro de `empleados`, crea una entrada en `check_ins` y devuelve `matchedEmployee` y `checkIn`.
 - **PATCH `/api/employees/:id`** - Edita el nombre y legajo de un empleado (solo admin).
+- **PATCH `/api/employees/:id/status`** - Desactiva o reactiva un empleado sin borrar su historial.
+- **POST `/api/employees/:id/face`** / **DELETE `/api/employees/:id/face`** - Reemplaza o elimina su rostro en CompreFace.
+- **POST `/api/admin/employees/import`** - Importa empleados desde CSV/XLS/XLSX y devuelve filas inválidas para corrección.
+- **GET `/api/admin/audit-log`** - Consulta auditoría de altas, ediciones, bajas, reactivaciones y cambios faciales.
 - **POST `/api/auth/refresh`** - Renueva una sesión administrativa activa.
 - **GET `/api/admin/face-diagnostics`** - Muestra subjects, image IDs y estado de sincronización.
 - **PATCH `/api/admin/face-diagnostics/:id`** - Reasigna un subject legacy a un empleado.
@@ -218,6 +223,8 @@ FaceApp envía las capturas al CompreFace auto-hosteado del proyecto:
 - **GET `/api/admin/reports/daily.csv`** - Descarga un reporte CSV filtrable.
 
 La especificación OpenAPI está en `openapi.yaml`. Las altas y reconocimientos aceptan `Idempotency-Key` para evitar duplicados por reintentos.
+
+El panel `/admin/employees` incluye búsqueda, filtros por estado, ordenamiento, importación de hojas de cálculo, edición validada, reemplazo/eliminación de rostros y desactivación reversible. Las bajas son lógicas y preservan los check-ins y la auditoría.
 
 El dashboard permite consultar vistas de día, semana, mes y rango personalizado; filtrar por empleado/fechas; consultar primeros ingresos, tardanzas, empleados activos y ausencias; y exportar el detalle de check-ins a CSV. El envío automático por correo requiere conectar un proveedor SMTP/transactional y no se activa por defecto para no almacenar credenciales en el repositorio.
 

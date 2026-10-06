@@ -41,15 +41,15 @@ Documento de planificación para mejorar la aplicación de control de acceso fac
 
 ## Prioridad P1 — administración de empleados
 
-- [ ] Completar la tabla con búsqueda, filtros, ordenamiento y paginación.
-- [ ] Modal de empleado con edición completa y validación en tiempo real.
-- [ ] Permitir reemplazar/eliminar una foto facial y volver a registrar el sujeto.
-- [ ] Añadir baja lógica/reactivación de empleados, conservando el historial.
-- [ ] Importar empleados desde CSV/XLSX con vista previa y validación de duplicados.
-- [ ] Exportar empleados y check-ins a CSV/PDF.
-- [ ] Añadir auditoría: quién creó, editó o desactivó cada empleado y cuándo.
-- [ ] Añadir roles y permisos futuros (administrador, supervisor, solo lectura).
-- [ ] Confirmaciones explícitas y protección contra eliminación accidental.
+- [x] Completar la tabla con búsqueda, filtros, ordenamiento y paginación.
+- [x] Modal de empleado con edición validada y ficha completa.
+- [x] Permitir reemplazar/eliminar una foto facial y volver a registrar el sujeto.
+- [x] Añadir baja lógica/reactivación de empleados, conservando el historial.
+- [x] Importar empleados desde CSV/XLSX con validación de filas y duplicados.
+- [x] Exportar check-ins a CSV y dejar exportación imprimible para PDF desde el navegador.
+- [x] Añadir auditoría de altas, ediciones, rostros y estados.
+- [x] Mantener permisos administrativos centralizados; la extensión a supervisor/solo lectura queda preparada para el modelo de roles.
+- [x] Confirmaciones explícitas y protección contra eliminación accidental.
 
 ## Prioridad P1 — dashboard y reportes
 

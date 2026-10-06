@@ -53,6 +53,7 @@ function publicUser(row) {
     employeeCode: row.employee_code,
     role: row.role,
     comprefaceSubject: row.compreface_subject,
+    comprefaceImageId: row.compreface_image_id || null,
     createdAt: serializedDate(row.created_at)
   };
 }
@@ -64,7 +65,9 @@ function publicEmployee(row) {
     displayName: row.nombre_completo,
     employeeCode: row.legajo,
     role: 'employee',
+    active: row.activo !== false,
     comprefaceSubject: row.compreface_subject,
+    comprefaceImageId: row.compreface_image_id || null,
     createdAt: serializedDate(row.created_at),
     updatedAt: serializedDate(row.updated_at),
     checkInCount: Number(row.check_in_count || 0),
@@ -111,6 +114,10 @@ async function createSchema() {
       compreface_subject TEXT NOT NULL UNIQUE,
       compreface_image_id TEXT,
       idempotency_key TEXT UNIQUE,
+      activo BOOLEAN NOT NULL DEFAULT TRUE,
+      created_by BIGINT REFERENCES users(id),
+      updated_by BIGINT REFERENCES users(id),
+      deactivated_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
@@ -130,6 +137,16 @@ async function createSchema() {
       details JSONB
     );
 
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id BIGSERIAL PRIMARY KEY,
+      actor_user_id BIGINT REFERENCES users(id),
+      action TEXT NOT NULL,
+      entity_type TEXT NOT NULL,
+      entity_id BIGINT,
+      details JSONB,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
     CREATE INDEX IF NOT EXISTS idx_check_ins_empleado_id ON check_ins(empleado_id);
     CREATE INDEX IF NOT EXISTS idx_check_ins_checked_in_at ON check_ins(checked_in_at);
@@ -146,6 +163,14 @@ async function applySchemaMigrations() {
     }],
     ['schema_v3_subject_diagnostics', async (client) => {
       await client.query('CREATE INDEX IF NOT EXISTS idx_empleados_compreface_subject ON empleados(compreface_subject)');
+    }],
+    ['schema_v4_employee_lifecycle_audit', async (client) => {
+      await client.query('ALTER TABLE empleados ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TRUE');
+      await client.query('ALTER TABLE empleados ADD COLUMN IF NOT EXISTS created_by BIGINT REFERENCES users(id)');
+      await client.query('ALTER TABLE empleados ADD COLUMN IF NOT EXISTS updated_by BIGINT REFERENCES users(id)');
+      await client.query('ALTER TABLE empleados ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMPTZ');
+      await client.query('CREATE TABLE IF NOT EXISTS audit_log (id BIGSERIAL PRIMARY KEY, actor_user_id BIGINT REFERENCES users(id), action TEXT NOT NULL, entity_type TEXT NOT NULL, entity_id BIGINT, details JSONB, created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP)');
+      await client.query('CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at)');
     }]
   ];
   for (const [migrationKey, apply] of migrations) {
@@ -345,15 +370,16 @@ export async function createEmployee({ displayName, employeeCode, comprefaceSubj
   return createEmployeeWithIdempotency({ displayName, employeeCode, comprefaceSubject, comprefaceImageId });
 }
 
-export async function createEmployeeWithIdempotency({ displayName, employeeCode, comprefaceSubject, comprefaceImageId, idempotencyKey }) {
+export async function createEmployeeWithIdempotency({ displayName, employeeCode, comprefaceSubject, comprefaceImageId, idempotencyKey, actorUserId = null }) {
   if (idempotencyKey) {
     const existing = await database.query('SELECT id FROM empleados WHERE idempotency_key = $1 LIMIT 1', [idempotencyKey]);
     if (existing.rowCount) return getEmployeeById(existing.rows[0].id);
   }
   const result = await database.query(`
-    INSERT INTO empleados (nombre_completo, legajo, compreface_subject, compreface_image_id, idempotency_key)
-    VALUES ($1, $2, $3, $4, $5) RETURNING id
-  `, [displayName, employeeCode, comprefaceSubject, comprefaceImageId, idempotencyKey || null]);
+    INSERT INTO empleados (nombre_completo, legajo, compreface_subject, compreface_image_id, idempotency_key, created_by, updated_by)
+    VALUES ($1, $2, $3, $4, $5, $6, $6) RETURNING id
+  `, [displayName, employeeCode, comprefaceSubject, comprefaceImageId, idempotencyKey || null, actorUserId]);
+  await recordAudit({ actorUserId, action: 'employee.created', entityId: result.rows[0].id, details: { employeeCode } });
   return getEmployeeById(result.rows[0].id);
 }
 
@@ -363,6 +389,24 @@ export async function listEmployees() {
     GROUP BY empleados.id ORDER BY LOWER(empleados.nombre_completo)
   `);
   return result.rows.map(publicEmployee);
+}
+
+export async function listEmployeesPage({ search = '', active, sort = 'name', page = 1, pageSize = 20 } = {}) {
+  const params = [];
+  const clauses = [];
+  if (search) { params.push(`%${search}%`); clauses.push(`(LOWER(nombre_completo) LIKE LOWER($${params.length}) OR LOWER(legajo) LIKE LOWER($${params.length}))`); }
+  if (active === true || active === false) { params.push(active); clauses.push(`activo = $${params.length}`); }
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  const order = sort === 'code' ? 'LOWER(legajo)' : sort === 'created' ? 'created_at' : 'LOWER(nombre_completo)';
+  const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+  const safeSize = Math.min(100, Math.max(1, Number.parseInt(pageSize, 10) || 20));
+  const total = await database.query(`SELECT COUNT(*)::int AS total FROM empleados ${where}`, params);
+  const rows = await database.query(`${employeeWithActivitySelect} ${where} GROUP BY empleados.id ORDER BY ${order} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`, [...params, safeSize, (safePage - 1) * safeSize]);
+  return { page: safePage, pageSize: safeSize, total: total.rows[0].total, employees: rows.rows.map(publicEmployee) };
+}
+
+async function recordAudit({ actorUserId, action, entityId, details }) {
+  await database.query('INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, details) VALUES ($1, $2, $3, $4, $5)', [actorUserId || null, action, 'employee', entityId || null, JSON.stringify(details || {})]);
 }
 
 export async function getEmployeeBySubject(subject) {
@@ -381,6 +425,12 @@ export async function reassignEmployeeSubject({ employeeId, comprefaceSubject, c
     WHERE id = $3 RETURNING id
   `, [comprefaceSubject, comprefaceImageId, employeeId]);
   return result.rowCount ? getEmployeeById(employeeId) : null;
+}
+
+export async function updateEmployeeFace({ id, comprefaceSubject, comprefaceImageId, actorUserId = null }) {
+  const result = await database.query('UPDATE empleados SET compreface_subject = $1, compreface_image_id = $2, updated_at = CURRENT_TIMESTAMP, updated_by = $3 WHERE id = $4 RETURNING id', [comprefaceSubject, comprefaceImageId, actorUserId, id]);
+  if (result.rowCount) await recordAudit({ actorUserId, action: 'employee.face_replaced', entityId: id, details: { subject: comprefaceSubject, imageId: comprefaceImageId } });
+  return result.rowCount ? getEmployeeById(id) : null;
 }
 
 export async function getFaceDiagnostics() {
@@ -407,12 +457,29 @@ export async function getEmployeeById(id) {
   return publicEmployee(result.rows[0]);
 }
 
-export async function updateEmployee({ id, displayName, employeeCode }) {
+export async function updateEmployee({ id, displayName, employeeCode, actorUserId = null }) {
   const result = await database.query(`
-    UPDATE empleados SET nombre_completo = $1, legajo = $2, updated_at = CURRENT_TIMESTAMP
+    UPDATE empleados SET nombre_completo = $1, legajo = $2, updated_at = CURRENT_TIMESTAMP, updated_by = $4
     WHERE id = $3 RETURNING id
-  `, [displayName, employeeCode, id]);
+  `, [displayName, employeeCode, id, actorUserId]);
+  if (result.rowCount) await recordAudit({ actorUserId, action: 'employee.updated', entityId: id, details: { employeeCode } });
   return result.rowCount ? getEmployeeById(id) : null;
+}
+
+export async function setEmployeeActive({ id, active, actorUserId = null }) {
+  const result = await database.query(`UPDATE empleados SET activo = $1, deactivated_at = CASE WHEN $1 THEN NULL ELSE CURRENT_TIMESTAMP END, updated_at = CURRENT_TIMESTAMP, updated_by = $2 WHERE id = $3 RETURNING id`, [active, actorUserId, id]);
+  if (result.rowCount) await recordAudit({ actorUserId, action: active ? 'employee.reactivated' : 'employee.deactivated', entityId: id });
+  return result.rowCount ? getEmployeeById(id) : null;
+}
+
+export async function listAuditLog({ entityId, page = 1, pageSize = 50 } = {}) {
+  const params = [];
+  const where = entityId ? 'WHERE entity_type = \'employee\' AND entity_id = $1' : '';
+  if (entityId) params.push(entityId);
+  const safeSize = Math.min(100, Math.max(1, Number.parseInt(pageSize, 10) || 50));
+  const offset = (Math.max(1, Number.parseInt(page, 10) || 1) - 1) * safeSize;
+  const result = await database.query(`SELECT id, action, entity_type, entity_id, details, created_at FROM audit_log ${where} ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`, [...params, safeSize, offset]);
+  return result.rows.map((row) => ({ id: Number(row.id), action: row.action, entityType: row.entity_type, entityId: row.entity_id ? Number(row.entity_id) : null, details: row.details, createdAt: serializedDate(row.created_at) }));
 }
 
 export async function createCheckIn({ employeeId, similarity, detectionProbability, idempotencyKey }) {

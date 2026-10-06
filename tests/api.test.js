@@ -94,6 +94,22 @@ test('allows an admin to list employees', async () => {
   assert.ok(body.employees[0].lastCheckInAt);
 });
 
+test('supports employee search, soft deactivation and audit history', async () => {
+  const filtered = await fetch(`${baseUrl}/api/employees?search=Empleado&page=1&pageSize=10`, { headers: { cookie: adminCookie } });
+  assert.equal(filtered.status, 200);
+  assert.equal((await filtered.json()).employees.length, 1);
+
+  const deactivated = await fetch(`${baseUrl}/api/employees/1/status`, {
+    method: 'PATCH', headers: { 'content-type': 'application/json', cookie: adminCookie }, body: JSON.stringify({ active: false })
+  });
+  assert.equal(deactivated.status, 200);
+  assert.equal((await deactivated.json()).employee.active, false);
+
+  const audit = await fetch(`${baseUrl}/api/admin/audit-log?employeeId=1`, { headers: { cookie: adminCookie } });
+  assert.equal(audit.status, 200);
+  assert.equal((await audit.json()).audit[0].action, 'employee.deactivated');
+});
+
 test('allows admins to inspect and reassign facial subjects', async () => {
   const diagnosticsResponse = await fetch(`${baseUrl}/api/admin/face-diagnostics`, {
     headers: { cookie: adminCookie }

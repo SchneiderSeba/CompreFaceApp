@@ -29,6 +29,10 @@ database.exec(`
     role TEXT NOT NULL CHECK (role IN ('admin', 'employee')),
     compreface_subject TEXT UNIQUE,
     compreface_image_id TEXT,
+    activo INTEGER NOT NULL DEFAULT 1,
+    created_by INTEGER,
+    updated_by INTEGER,
+    deactivated_at TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CHECK (
       (role = 'admin' AND username IS NOT NULL AND password_hash IS NOT NULL)
@@ -65,7 +69,26 @@ database.exec(`
   CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
   CREATE INDEX IF NOT EXISTS idx_check_ins_empleado_id ON check_ins(empleado_id);
   CREATE INDEX IF NOT EXISTS idx_check_ins_checked_in_at ON check_ins(checked_in_at);
+  CREATE TABLE IF NOT EXISTS audit_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    actor_user_id INTEGER,
+    action TEXT NOT NULL,
+    entity_type TEXT NOT NULL,
+    entity_id INTEGER,
+    details TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
 `);
+
+const employeeColumns = new Set(database.prepare('PRAGMA table_info(empleados)').all().map((column) => column.name));
+for (const column of [
+  ['activo', 'INTEGER NOT NULL DEFAULT 1'],
+  ['created_by', 'INTEGER'],
+  ['updated_by', 'INTEGER'],
+  ['deactivated_at', 'TEXT']
+]) {
+  if (!employeeColumns.has(column[0])) database.exec(`ALTER TABLE empleados ADD COLUMN ${column[0]} ${column[1]}`);
+}
 
 // Move employees created by older versions into their dedicated table.
 database.exec(`
@@ -104,6 +127,7 @@ function publicUser(row) {
     employeeCode: row.employee_code,
     role: row.role,
     comprefaceSubject: row.compreface_subject,
+    comprefaceImageId: row.compreface_image_id || null,
     createdAt: row.created_at
   };
 }
@@ -115,7 +139,9 @@ function publicEmployee(row) {
     displayName: row.nombre_completo,
     employeeCode: row.legajo,
     role: 'employee',
+    active: row.activo !== 0,
     comprefaceSubject: row.compreface_subject,
+    comprefaceImageId: row.compreface_image_id || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     checkInCount: Number(row.check_in_count || 0),
@@ -244,6 +270,30 @@ export function listEmployees() {
   `).all().map(publicEmployee);
 }
 
+export function listEmployeesPage({ search = '', active, sort = 'name', page = 1, pageSize = 20 } = {}) {
+  const clauses = [];
+  const params = [];
+  if (search) { clauses.push('(LOWER(nombre_completo) LIKE LOWER(?) OR LOWER(legajo) LIKE LOWER(?))'); params.push(`%${search}%`, `%${search}%`); }
+  if (active === true || active === false) { clauses.push('activo = ?'); params.push(active ? 1 : 0); }
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  const total = database.prepare(`SELECT COUNT(*) AS total FROM empleados ${where}`).get(...params).total;
+  const order = sort === 'code' ? 'legajo COLLATE NOCASE' : sort === 'created' ? 'created_at' : 'nombre_completo COLLATE NOCASE';
+  const safePage = Math.max(1, Number.parseInt(page, 10) || 1); const safeSize = Math.min(100, Math.max(1, Number.parseInt(pageSize, 10) || 20));
+  const rows = database.prepare(`${employeeWithActivitySelect} ${where} GROUP BY empleados.id ORDER BY ${order} LIMIT ? OFFSET ?`).all(...params, safeSize, (safePage - 1) * safeSize);
+  return { page: safePage, pageSize: safeSize, total: Number(total), employees: rows.map(publicEmployee) };
+}
+
+export function setEmployeeActive({ id, active }) {
+  const result = database.prepare('UPDATE empleados SET activo = ?, deactivated_at = CASE WHEN ? THEN NULL ELSE CURRENT_TIMESTAMP END, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(active ? 1 : 0, active ? 1 : 0, id);
+  if (result.changes) database.prepare('INSERT INTO audit_log (action, entity_type, entity_id, details) VALUES (?, ?, ?, ?)').run(active ? 'employee.reactivated' : 'employee.deactivated', 'employee', id, '{}');
+  return result.changes ? getEmployeeById(id) : null;
+}
+
+export function listAuditLog({ entityId } = {}) {
+  const rows = database.prepare(entityId ? "SELECT * FROM audit_log WHERE entity_type = 'employee' AND entity_id = ? ORDER BY created_at DESC" : 'SELECT * FROM audit_log ORDER BY created_at DESC').all(...(entityId ? [entityId] : []));
+  return rows.map((row) => ({ id: row.id, action: row.action, entityType: row.entity_type, entityId: row.entity_id, details: JSON.parse(row.details || '{}'), createdAt: row.created_at }));
+}
+
 export function getEmployeeBySubject(subject) {
   return publicEmployee(database.prepare(`
     ${employeeWithActivitySelect}
@@ -259,6 +309,11 @@ export function reassignEmployeeSubject({ employeeId, comprefaceSubject, compref
     WHERE id = ?
   `).run(comprefaceSubject, comprefaceImageId, employeeId);
   return result.changes ? getEmployeeById(employeeId) : null;
+}
+
+export function updateEmployeeFace({ id, comprefaceSubject, comprefaceImageId }) {
+  const result = database.prepare('UPDATE empleados SET compreface_subject = ?, compreface_image_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(comprefaceSubject, comprefaceImageId, id);
+  return result.changes ? getEmployeeById(id) : null;
 }
 
 export function getFaceDiagnostics() {

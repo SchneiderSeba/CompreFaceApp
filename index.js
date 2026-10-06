@@ -24,13 +24,18 @@ import {
   findAdminByUsername,
   getDashboardStats,
   getDashboardReport,
+  getEmployeeById,
   getEmployeeBySubject,
   getFaceDiagnostics,
   reassignEmployeeSubject,
   refreshSession,
   getUserBySession,
   listEmployees,
+  listEmployeesPage,
   listCheckIns,
+  listAuditLog,
+  setEmployeeActive,
+  updateEmployeeFace,
   updateEmployee,
   verifyPassword,
   databaseDriver
@@ -38,6 +43,7 @@ import {
 import { getSessionToken, requireAdmin, SESSION_COOKIE } from './auth.js';
 import { AppError, ERROR_CODES, sendError } from './src/http-errors.js';
 import { parseEmployeeInput, parsePositiveId, parseSubjectInput } from './src/validators.js';
+import XLSX from 'xlsx';
 
 dotenv.config();
 
@@ -162,8 +168,38 @@ app.post('/api/auth/refresh', async (req, res) => {
   res.json({ user });
 });
 
-app.get('/api/employees', requireAdmin, async (_req, res) => {
+app.get('/api/employees', requireAdmin, async (req, res) => {
+  const { search = '', active, sort = 'name', page, pageSize } = req.query;
+  if (search || active !== undefined || page || pageSize || sort !== 'name') {
+    return res.json(await listEmployeesPage({ search, active: active === undefined ? undefined : active === 'true', sort, page, pageSize }));
+  }
   res.json({ employees: await listEmployees() });
+});
+
+app.get('/api/admin/audit-log', requireAdmin, async (req, res) => {
+  res.json({ audit: await listAuditLog({ entityId: req.query.employeeId ? Number.parseInt(req.query.employeeId, 10) : undefined }) });
+});
+
+app.post('/api/admin/employees/import', requireAdmin, async (req, res) => {
+  try {
+    if (typeof req.body.dataBase64 !== 'string' || !req.body.dataBase64) return res.status(400).json({ error: 'Archivo requerido' });
+    const workbook = XLSX.read(Buffer.from(req.body.dataBase64, 'base64'), { type: 'buffer' });
+    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: '' });
+    const imported = [];
+    const errors = [];
+    for (const [index, row] of rows.entries()) {
+      try {
+        const { displayName, employeeCode } = parseEmployeeInput({ name: row.nombre || row.name || row.displayName, employeeCode: row.legajo || row.employeeCode || row.code });
+        const employee = await createEmployeeWithIdempotency({ displayName, employeeCode, comprefaceSubject: `pending_${employeeCode}`, comprefaceImageId: null, idempotencyKey: `import:${employeeCode}`, actorUserId: req.user.id });
+        imported.push(employee);
+      } catch (error) {
+        errors.push({ row: index + 2, error: error.message });
+      }
+    }
+    res.status(201).json({ imported: imported.length, errors, employees: imported });
+  } catch (error) {
+    res.status(400).json({ error: `No se pudo leer el archivo: ${error.message}` });
+  }
 });
 
 app.get('/api/admin/dashboard', requireAdmin, async (_req, res) => {
@@ -218,7 +254,7 @@ app.patch('/api/employees/:id', requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'El legajo debe tener entre 2 y 32 letras, números, guiones o guiones bajos' });
     }
 
-    const employee = await updateEmployee({ id, displayName, employeeCode });
+    const employee = await updateEmployee({ id, displayName, employeeCode, actorUserId: req.user.id });
     if (!employee) return res.status(404).json({ error: 'Empleado no encontrado' });
     res.json({ employee });
   } catch (error) {
@@ -228,6 +264,40 @@ app.patch('/api/employees/:id', requireAdmin, async (req, res) => {
       error: duplicate ? 'Ya existe un empleado con ese legajo' : 'No se pudo actualizar el empleado'
     });
   }
+});
+
+app.patch('/api/employees/:id/status', requireAdmin, async (req, res) => {
+  const id = parsePositiveId(req.params.id, 'El empleado');
+  if (typeof req.body.active !== 'boolean') return res.status(400).json({ error: 'active debe ser booleano' });
+  const employee = await setEmployeeActive({ id, active: req.body.active, actorUserId: req.user.id });
+  if (!employee) return res.status(404).json({ error: 'Empleado no encontrado' });
+  res.json({ employee });
+});
+
+app.post('/api/employees/:id/face', requireAdmin, async (req, res) => {
+  const id = parsePositiveId(req.params.id, 'El empleado');
+  const employee = await getEmployeeById(id);
+  if (!employee) return res.status(404).json({ error: 'Empleado no encontrado' });
+  if (typeof req.body.image !== 'string' || !req.body.image) return res.status(400).json({ error: 'No image provided' });
+  let faceResult;
+  try {
+    faceResult = await addCapturedFace(req.body.image, employee.comprefaceSubject);
+    const updated = await updateEmployeeFace({ id, comprefaceSubject: employee.comprefaceSubject, comprefaceImageId: faceResult.image_id, actorUserId: req.user.id });
+    if (employee.comprefaceImageId && employee.comprefaceImageId !== faceResult.image_id) await deleteCapturedFace(employee.comprefaceImageId);
+    res.json({ employee: updated });
+  } catch (error) {
+    if (faceResult?.image_id) await deleteCapturedFace(faceResult.image_id).catch(() => {});
+    res.status(error.statusCode || 500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/employees/:id/face', requireAdmin, async (req, res) => {
+  const id = parsePositiveId(req.params.id, 'El empleado');
+  const employee = await getEmployeeById(id);
+  if (!employee) return res.status(404).json({ error: 'Empleado no encontrado' });
+  if (employee.comprefaceImageId) await deleteCapturedFace(employee.comprefaceImageId);
+  const updated = await updateEmployeeFace({ id, comprefaceSubject: employee.comprefaceSubject, comprefaceImageId: null, actorUserId: req.user.id });
+  res.json({ employee: updated });
 });
 
 app.get('/api/admin/face-diagnostics', requireAdmin, async (_req, res) => {
@@ -282,7 +352,8 @@ async function createEmployeeHandler(req, res) {
         employeeCode: normalizedCode,
         comprefaceSubject,
         comprefaceImageId: faceResult.image_id,
-        idempotencyKey: req.get('Idempotency-Key')?.trim() || null
+        idempotencyKey: req.get('Idempotency-Key')?.trim() || null,
+        actorUserId: req.user.id
       });
 
       res.status(201).json({
