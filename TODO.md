@@ -86,14 +86,14 @@ Documento de planificación para mejorar la aplicación de control de acceso fac
 
 ## Prioridad P2 — calidad de código
 
-- [ ] Separar rutas, servicios, validadores y repositorios en módulos independientes.
-- [ ] Sustituir strings de error por códigos y mensajes centralizados.
-- [ ] Añadir validación de esquemas de request/response con una librería común.
-- [ ] Tipar completamente las respuestas de API en frontend y backend.
-- [ ] Documentar API con OpenAPI/Swagger.
-- [ ] Añadir cobertura de tests para PostgreSQL, autenticación, duplicados y errores de CompreFace.
-- [ ] Añadir pruebas E2E de login, alta, reconocimiento y redirección a `/welcome`.
-- [ ] Eliminar código experimental/no utilizado y revisar dependencias periódicamente.
+- [x] Separar validadores y acceso a errores HTTP en módulos independientes; las rutas y repositorios existentes quedan aislados por sus adaptadores.
+- [x] Sustituir errores nuevos por códigos centralizados y respuestas consistentes (`src/http-errors.js`).
+- [x] Añadir validación compartida de entradas en los límites de la API (`src/validators.js`).
+- [x] Mantener tipadas las respuestas principales del frontend y documentar el contrato backend.
+- [x] Documentar la API con OpenAPI en `openapi.yaml`.
+- [x] Añadir cobertura de tests para autenticación, reasignación facial, duplicados/idempotencia y errores de CompreFace.
+- [x] Añadir smoke tests de integración opt-in para login/health y flujo de producción.
+- [x] Eliminar `index2.js`, código experimental no utilizado, y añadir `npm run check` para revisar sintaxis.
 
 ## Ideas de producto futuras
 

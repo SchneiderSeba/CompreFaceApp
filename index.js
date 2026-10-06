@@ -34,6 +34,8 @@ import {
   databaseDriver
 } from './database-provider.js';
 import { getSessionToken, requireAdmin, SESSION_COOKIE } from './auth.js';
+import { AppError, ERROR_CODES, sendError } from './src/http-errors.js';
+import { parseEmployeeInput, parsePositiveId, parseSubjectInput } from './src/validators.js';
 
 dotenv.config();
 
@@ -168,7 +170,7 @@ app.get('/api/admin/dashboard', requireAdmin, async (_req, res) => {
 
 app.patch('/api/employees/:id', requireAdmin, async (req, res) => {
   try {
-    const id = Number.parseInt(req.params.id, 10);
+    const id = parsePositiveId(req.params.id, 'El empleado');
     const displayName = typeof req.body.displayName === 'string' ? req.body.displayName.trim() : '';
     const employeeCode = typeof req.body.employeeCode === 'string'
       ? req.body.employeeCode.trim().toUpperCase()
@@ -201,9 +203,10 @@ app.get('/api/admin/face-diagnostics', requireAdmin, async (_req, res) => {
 });
 
 app.patch('/api/admin/face-diagnostics/:id', requireAdmin, async (req, res) => {
-  const employeeId = Number.parseInt(req.params.id, 10);
+  const employeeId = parsePositiveId(req.params.id, 'El empleado');
   const subject = typeof req.body.subject === 'string' ? req.body.subject.trim() : '';
   const imageId = typeof req.body.imageId === 'string' ? req.body.imageId.trim() : null;
+  try { parseSubjectInput(subject); } catch (error) { return sendError(res, error); }
   if (!Number.isInteger(employeeId) || employeeId <= 0 || !/^[^\s]{1,120}$/.test(subject)) {
     return res.status(400).json({ error: 'El sujeto de CompreFace no es válido' });
   }
@@ -230,6 +233,8 @@ async function createEmployeeHandler(req, res) {
     }
 
     const normalizedCode = typeof employeeCode === 'string' ? employeeCode.trim().toUpperCase() : '';
+    // Shared boundary validator keeps capture input rules consistent with admin edits.
+    parseEmployeeInput({ name, employeeCode: normalizedCode });
     if (!/^[A-Z0-9_-]{2,32}$/.test(normalizedCode)) {
       return res.status(400).json({ error: 'El legajo debe tener entre 2 y 32 letras, números, guiones o guiones bajos' });
     }

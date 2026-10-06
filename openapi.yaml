@@ -1,0 +1,96 @@
+openapi: 3.1.0
+info:
+  title: FaceApp API
+  version: 1.0.0
+  description: API de reconocimiento facial y control de acceso.
+servers:
+  - url: https://comprefaceapp-production-a8a0.up.railway.app
+paths:
+  /api/health:
+    get:
+      summary: Estado de backend, PostgreSQL y CompreFace
+      responses:
+        '200': { description: Servicios operativos }
+        '503': { description: Servicio degradado }
+  /api/auth/login:
+    post:
+      summary: Iniciar sesión administrativa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string, format: password }
+      responses:
+        '200': { description: Sesión creada }
+        '401': { description: Credenciales inválidas }
+  /api/auth/refresh:
+    post:
+      summary: Renovar sesión administrativa
+      responses:
+        '200': { description: Sesión renovada }
+        '401': { description: No autenticado }
+  /recognize:
+    post:
+      summary: Reconocer una cara y registrar check-in si coincide con un empleado
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          schema: { type: string, maxLength: 120 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image: { type: string, description: Data URL de imagen }
+      responses:
+        '200': { description: Resultado de reconocimiento }
+        '400': { description: Imagen inválida }
+  /api/employees:
+    get:
+      summary: Listar empleados
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: Lista de empleados }
+        '401': { description: No autenticado }
+    post:
+      summary: Registrar empleado y rostro
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          schema: { type: string, maxLength: 120 }
+      responses:
+        '201': { description: Empleado creado }
+        '409': { description: Empleado duplicado }
+  /api/admin/face-diagnostics:
+    get:
+      summary: Diagnóstico de sincronización facial
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: Subjects y image IDs por empleado }
+  /api/admin/face-diagnostics/{id}:
+    patch:
+      summary: Reasignar un subject de CompreFace
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Empleado actualizado }
+        '409': { description: Subject ya utilizado }
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: faceapp_session

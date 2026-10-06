@@ -210,6 +210,18 @@ FaceApp envía las capturas al CompreFace auto-hosteado del proyecto:
 - **POST `/recognize`** - Busca coincidencias en la galería de rostros
   - Cuando el rostro coincide con un registro de `empleados`, crea una entrada en `check_ins` y devuelve `matchedEmployee` y `checkIn`.
 - **PATCH `/api/employees/:id`** - Edita el nombre y legajo de un empleado (solo admin).
+- **POST `/api/auth/refresh`** - Renueva una sesión administrativa activa.
+- **GET `/api/admin/face-diagnostics`** - Muestra subjects, image IDs y estado de sincronización.
+- **PATCH `/api/admin/face-diagnostics/:id`** - Reasigna un subject legacy a un empleado.
+
+La especificación OpenAPI está en `openapi.yaml`. Las altas y reconocimientos aceptan `Idempotency-Key` para evitar duplicados por reintentos.
+
+### Calidad y validación
+
+- `npm run check` valida la sintaxis de los módulos backend.
+- `npm test` ejecuta la suite Node integrada.
+- `cd FrontEnd/faceApp && npm run lint` valida el frontend.
+- `cd FrontEnd/faceApp && npm run build` ejecuta type-check y build de producción.
 - **GET `/api/admin/dashboard`** - Devuelve totales, actividad diaria, actividad por empleado y últimos check-ins (solo admin).
 
 ### Rutas de la interfaz
