@@ -500,6 +500,56 @@ export async function getDashboardStats() {
   };
 }
 
+function reportWindow({ from, to }) {
+  const params = [];
+  const clauses = [];
+  if (from && /^\d{4}-\d{2}-\d{2}$/.test(from)) { params.push(from); clauses.push(`(checked_in_at AT TIME ZONE 'UTC')::date >= $${params.length}`); }
+  if (to && /^\d{4}-\d{2}-\d{2}$/.test(to)) { params.push(to); clauses.push(`(checked_in_at AT TIME ZONE 'UTC')::date <= $${params.length}`); }
+  return { params, where: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '' };
+}
+
+export async function listCheckIns({ from, to, employeeId, page = 1, pageSize = 20 } = {}) {
+  const window = reportWindow({ from, to });
+  const clauses = window.where ? [window.where.replace(/^WHERE /, '')] : [];
+  if (Number.isInteger(employeeId) && employeeId > 0) { window.params.push(employeeId); clauses.push(`check_ins.empleado_id = $${window.params.length}`); }
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+  const safeSize = Math.min(100, Math.max(1, Number.parseInt(pageSize, 10) || 20));
+  const count = await database.query(`SELECT COUNT(*)::int AS total FROM check_ins ${where}`, window.params);
+  const offset = (safePage - 1) * safeSize;
+  const data = await database.query(`
+    SELECT check_ins.id, check_ins.checked_in_at, check_ins.similarity, check_ins.detection_probability,
+      empleados.id AS employee_id, empleados.nombre_completo AS display_name, empleados.legajo AS employee_code
+    FROM check_ins JOIN empleados ON empleados.id = check_ins.empleado_id
+    ${where} ORDER BY check_ins.checked_in_at DESC, check_ins.id DESC
+    LIMIT $${window.params.length + 1} OFFSET $${window.params.length + 2}
+  `, [...window.params, safeSize, offset]);
+  return {
+    page: safePage, pageSize: safeSize, total: count.rows[0].total,
+    items: data.rows.map((row) => ({ id: Number(row.id), checkedInAt: serializedDate(row.checked_in_at), similarity: row.similarity, detectionProbability: row.detection_probability, employeeId: Number(row.employee_id), displayName: row.display_name, employeeCode: row.employee_code }))
+  };
+}
+
+export async function getDashboardReport(filters = {}) {
+  const base = await getDashboardStats();
+  const window = reportWindow(filters);
+  const employeeClause = Number.isInteger(filters.employeeId) && filters.employeeId > 0 ? ` AND check_ins.empleado_id = $${window.params.length + 1}` : '';
+  const params = Number.isInteger(filters.employeeId) && filters.employeeId > 0 ? [...window.params, filters.employeeId] : window.params;
+  const period = ['day', 'week', 'month', 'range'].includes(filters.period) ? filters.period : 'week';
+  const periodClause = period === 'month' ? " AND (checked_in_at AT TIME ZONE 'UTC')::date >= (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date - 29" : period === 'day' ? " AND (checked_in_at AT TIME ZONE 'UTC')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date" : period === 'range' ? '' : " AND (checked_in_at AT TIME ZONE 'UTC')::date >= (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date - 6";
+  const metrics = await database.query(`
+    SELECT COUNT(*)::int AS check_ins,
+      COUNT(DISTINCT empleado_id)::int AS active_employees,
+      COUNT(*) FILTER (WHERE (checked_in_at AT TIME ZONE 'UTC')::time > $${params.length + 1}::time)::int AS late_check_ins,
+      COUNT(DISTINCT empleado_id) FILTER (WHERE id IN (SELECT MIN(first.id) FROM check_ins first GROUP BY first.empleado_id))::int AS first_entries
+    FROM check_ins ${window.where}${employeeClause}
+  `, [...params, process.env.WORKDAY_START || '09:00']);
+  const totalEmployees = await database.query('SELECT COUNT(*)::int AS total FROM empleados');
+  const chart = await database.query(`SELECT (checked_in_at AT TIME ZONE 'UTC')::date::text AS day, COUNT(*)::int AS count FROM check_ins WHERE 1=1 ${periodClause}${window.where ? ` AND ${window.where.replace(/^WHERE /, '')}` : ''}${employeeClause} GROUP BY day ORDER BY day`, params);
+  const active = Number(metrics.rows[0].active_employees || 0);
+  return { ...base, report: { firstEntries: Number(metrics.rows[0].first_entries || 0), lateCheckIns: Number(metrics.rows[0].late_check_ins || 0), activeEmployees: active, absences: Math.max(0, Number(totalEmployees.rows[0].total) - active), checkIns: Number(metrics.rows[0].check_ins || 0), period: { from: filters.from || null, to: filters.to || null, type: period }, chart: chart.rows.map((row) => ({ day: row.day, count: Number(row.count) })) } };
+}
+
 export async function checkDatabaseConnection() {
   await database.query('SELECT 1');
   return databaseDriver;

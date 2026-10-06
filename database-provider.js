@@ -20,6 +20,8 @@ export const getEmployeeById = (...args) => Promise.resolve(database.getEmployee
 export const updateEmployee = (...args) => Promise.resolve(database.updateEmployee(...args));
 export const createCheckIn = (...args) => Promise.resolve(database.createCheckIn(...args));
 export const getDashboardStats = (...args) => Promise.resolve(database.getDashboardStats(...args));
+export const getDashboardReport = (...args) => Promise.resolve(database.getDashboardReport ? database.getDashboardReport(...args) : database.getDashboardStats(...args));
+export const listCheckIns = (...args) => Promise.resolve(database.listCheckIns ? database.listCheckIns(...args) : { page: 1, pageSize: 20, total: 0, items: [] });
 export const checkDatabaseConnection = database.checkDatabaseConnection
   ? (...args) => Promise.resolve(database.checkDatabaseConnection(...args))
   : async () => databaseDriver;

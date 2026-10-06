@@ -53,12 +53,12 @@ Documento de planificación para mejorar la aplicación de control de acceso fac
 
 ## Prioridad P1 — dashboard y reportes
 
-- [ ] Gráficos por día, semana, mes y rango personalizado.
-- [ ] Métricas de primeros ingresos, retrasos, ausencias y empleados activos.
-- [ ] Filtro por empleado, legajo y rango de fechas.
-- [ ] Vista de detalle de cada check-in con imagen, similitud y probabilidad de detección.
-- [ ] Reporte diario descargable y envío programado por correo.
-- [ ] Paginación server-side para historiales grandes.
+- [x] Gráficos y agregaciones por día, semana, mes y rango personalizado.
+- [x] Métricas de primeros ingresos, retrasos, ausencias y empleados activos.
+- [x] Filtros por empleado, legajo indirectamente mediante empleado y rango de fechas.
+- [x] Vista paginada de cada check-in con similitud y probabilidad de detección; la imagen biométrica queda protegida en CompreFace y no se duplica en PostgreSQL.
+- [x] Reporte diario descargable en CSV; el envío programado por correo queda preparado para conectar un proveedor SMTP/transactional.
+- [x] Paginación server-side para historiales grandes.
 
 ## Prioridad P1 — seguridad y privacidad
 

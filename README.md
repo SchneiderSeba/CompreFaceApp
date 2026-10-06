@@ -213,8 +213,13 @@ FaceApp envía las capturas al CompreFace auto-hosteado del proyecto:
 - **POST `/api/auth/refresh`** - Renueva una sesión administrativa activa.
 - **GET `/api/admin/face-diagnostics`** - Muestra subjects, image IDs y estado de sincronización.
 - **PATCH `/api/admin/face-diagnostics/:id`** - Reasigna un subject legacy a un empleado.
+- **GET `/api/admin/reports`** - Devuelve métricas filtrables por período, fechas y empleado.
+- **GET `/api/admin/check-ins`** - Historial paginado server-side con similitud y probabilidad de detección.
+- **GET `/api/admin/reports/daily.csv`** - Descarga un reporte CSV filtrable.
 
 La especificación OpenAPI está en `openapi.yaml`. Las altas y reconocimientos aceptan `Idempotency-Key` para evitar duplicados por reintentos.
+
+El dashboard permite consultar vistas de día, semana, mes y rango personalizado; filtrar por empleado/fechas; consultar primeros ingresos, tardanzas, empleados activos y ausencias; y exportar el detalle de check-ins a CSV. El envío automático por correo requiere conectar un proveedor SMTP/transactional y no se activa por defecto para no almacenar credenciales en el repositorio.
 
 ### Calidad y validación
 

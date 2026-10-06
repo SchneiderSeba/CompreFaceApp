@@ -138,6 +138,24 @@ test('returns employee and check-in statistics to admins', async () => {
   assert.equal(body.dailyCheckIns.length, 7);
 });
 
+test('returns filtered and paginated check-in reports', async () => {
+  const response = await fetch(`${baseUrl}/api/admin/check-ins?page=1&pageSize=1&employeeId=1`, {
+    headers: { cookie: adminCookie }
+  });
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.total, 1);
+  assert.equal(body.items.length, 1);
+  assert.equal(body.items[0].employeeCode, 'EMP-TEST');
+});
+
+test('exports a CSV report for administrators', async () => {
+  const response = await fetch(`${baseUrl}/api/admin/reports/daily.csv`, { headers: { cookie: adminCookie } });
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get('content-type'), /text\/csv/);
+  assert.match(await response.text(), /empleado/);
+});
+
 test('protects employee editing from anonymous requests', async () => {
   const response = await fetch(`${baseUrl}/api/employees/1`, {
     method: 'PATCH',

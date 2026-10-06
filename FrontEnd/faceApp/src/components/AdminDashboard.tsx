@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { AddManually } from './AddManually';
-import type { AuthUser, DashboardStats, Employee, FaceDiagnostic } from '../types';
+import type { AuthUser, DashboardStats, Employee, FaceDiagnostic, CheckInPage } from '../types';
 import './AdminDashboard.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://comprefaceapp-production-a8a0.up.railway.app';
@@ -42,6 +42,8 @@ export function AdminDashboard({
   const [diagnosticSubject, setDiagnosticSubject] = useState('');
   const [diagnosticEmployeeId, setDiagnosticEmployeeId] = useState<number | null>(null);
   const [diagnosticSaving, setDiagnosticSaving] = useState(false);
+  const [checkIns, setCheckIns] = useState<CheckInPage>({ page: 1, pageSize: 20, total: 0, items: [] });
+  const [reportFilters, setReportFilters] = useState({ from: '', to: '', employeeId: '', period: 'week', page: '1' });
 
   const handleError = useCallback((unknownError: unknown) => {
     if (axios.isAxiosError(unknownError)) {
@@ -56,20 +58,23 @@ export function AdminDashboard({
   const loadDashboard = useCallback(async () => {
     setError(null);
     try {
-      const [employeeResponse, statsResponse, diagnosticsResponse] = await Promise.all([
+      const params = Object.fromEntries(Object.entries(reportFilters).filter(([, value]) => value));
+      const [employeeResponse, statsResponse, diagnosticsResponse, checkInResponse] = await Promise.all([
         axios.get<{ employees: Employee[] }>(`${API_URL}/api/employees`, { withCredentials: true }),
-        axios.get<DashboardStats>(`${API_URL}/api/admin/dashboard`, { withCredentials: true }),
-        axios.get<{ diagnostics: FaceDiagnostic[] }>(`${API_URL}/api/admin/face-diagnostics`, { withCredentials: true })
+        axios.get<DashboardStats>(`${API_URL}/api/admin/reports`, { params, withCredentials: true }),
+        axios.get<{ diagnostics: FaceDiagnostic[] }>(`${API_URL}/api/admin/face-diagnostics`, { withCredentials: true }),
+        axios.get<CheckInPage>(`${API_URL}/api/admin/check-ins`, { params, withCredentials: true })
       ]);
       setEmployees(employeeResponse.data.employees);
       setStats(statsResponse.data);
       setDiagnostics(diagnosticsResponse.data.diagnostics);
+      setCheckIns(checkInResponse.data);
     } catch (unknownError) {
       setError(handleError(unknownError));
     } finally {
       setLoading(false);
     }
-  }, [handleError]);
+  }, [handleError, reportFilters]);
 
   useEffect(() => {
     void loadDashboard();
@@ -186,17 +191,29 @@ export function AdminDashboard({
 
         {!loading && !error && section === 'charts' && stats && (
           <div className="admin-content">
+            <section className="dashboard-panel report-filters" aria-label="Filtros de reportes">
+              <div className="panel-heading"><div><p className="app-kicker">Reportes</p><h3>Período y empleado</h3></div><button className="secondary-action" onClick={() => window.open(`${API_URL}/api/admin/reports/daily.csv?${new URLSearchParams(Object.fromEntries(Object.entries(reportFilters).filter(([, value]) => value)))}`, '_blank')}>Descargar CSV</button></div>
+              <div className="filter-row">
+                <label>Desde<input type="date" value={reportFilters.from} onChange={(event) => setReportFilters((current) => ({ ...current, from: event.target.value }))} /></label>
+                <label>Hasta<input type="date" value={reportFilters.to} onChange={(event) => setReportFilters((current) => ({ ...current, to: event.target.value }))} /></label>
+                <label>Empleado<select value={reportFilters.employeeId} onChange={(event) => setReportFilters((current) => ({ ...current, employeeId: event.target.value }))}><option value="">Todos</option>{employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.displayName}</option>)}</select></label>
+                <label>Vista<select value={reportFilters.period} onChange={(event) => setReportFilters((current) => ({ ...current, period: event.target.value }))}><option value="day">Día</option><option value="week">Semana</option><option value="month">Mes</option><option value="range">Rango</option></select></label>
+              </div>
+            </section>
             <section className="stat-grid" aria-label="Resumen">
               <article><span>Empleados</span><strong>{stats.totals.employees}</strong><small>registrados</small></article>
               <article><span>Check-ins hoy</span><strong>{stats.totals.todayCheckIns}</strong><small>{stats.totals.todayEmployees} empleados</small></article>
               <article><span>Check-ins totales</span><strong>{stats.totals.checkIns}</strong><small>histórico</small></article>
+              <article><span>Primeros ingresos</span><strong>{stats.report?.firstEntries ?? 0}</strong><small>en el período</small></article>
+              <article><span>Ingresos tardíos</span><strong>{stats.report?.lateCheckIns ?? 0}</strong><small>después de las 09:00</small></article>
+              <article><span>Activos / ausentes</span><strong>{stats.report?.activeEmployees ?? 0} / {stats.report?.absences ?? 0}</strong><small>en el período</small></article>
             </section>
 
             <section className="dashboard-grid">
               <article className="dashboard-panel">
                 <div className="panel-heading"><div><p className="app-kicker">Últimos 7 días</p><h3>Ingresos por día</h3></div></div>
                 <div className="daily-chart" aria-label="Gráfico de ingresos diarios">
-                  {stats.dailyCheckIns.map((item) => (
+                    {(stats.report?.chart ?? stats.dailyCheckIns).map((item) => (
                     <div className="daily-column" key={item.day}>
                       <span className="daily-value">{item.count}</span>
                       <div><i style={{ height: `${Math.max(4, (item.count / maxDaily) * 100)}%` }} /></div>
@@ -238,6 +255,11 @@ export function AdminDashboard({
                   ))}
                 </div>
               )}
+            </section>
+            <section className="dashboard-panel recent-panel">
+              <div className="panel-heading"><div><p className="app-kicker">Historial paginado</p><h3>Detalle de check-ins</h3></div><span>{checkIns.total} registros</span></div>
+              {checkIns.items.length === 0 ? <p className="admin-empty">No hay registros para los filtros seleccionados.</p> : <div className="recent-list">{checkIns.items.map((item) => <div key={item.id}><span className="employee-avatar">{item.displayName.charAt(0).toUpperCase()}</span><span><strong>{item.displayName}</strong><small>{item.employeeCode} · {formatDateTime(item.checkedInAt)}</small></span><b>{item.similarity == null ? '—' : `${(item.similarity * 100).toFixed(1)}%`}</b><small>Detección: {item.detectionProbability == null ? '—' : `${(item.detectionProbability * 100).toFixed(1)}%`}</small></div>)}</div>}
+              <div className="modal-actions"><button className="secondary-action" disabled={checkIns.page <= 1} onClick={() => setReportFilters((current) => ({ ...current, page: String(checkIns.page - 1) }))}>Anterior</button><span>Página {checkIns.page}</span><button className="secondary-action" disabled={checkIns.page * checkIns.pageSize >= checkIns.total} onClick={() => setReportFilters((current) => ({ ...current, page: String(checkIns.page + 1) }))}>Siguiente</button></div>
             </section>
           </div>
         )}

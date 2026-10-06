@@ -69,6 +69,30 @@ export interface DashboardStats {
     displayName: string
     employeeCode: string
   }>
+  report?: {
+    firstEntries: number
+    lateCheckIns: number
+    activeEmployees: number
+    absences: number
+    checkIns: number
+    period: { from: string | null; to: string | null; type?: string }
+    chart?: Array<{ day: string; count: number }>
+  }
+}
+
+export interface CheckInPage {
+  page: number
+  pageSize: number
+  total: number
+  items: Array<{
+    id: number
+    checkedInAt: string
+    similarity: number | null
+    detectionProbability: number | null
+    employeeId: number
+    displayName: string
+    employeeCode: string
+  }>
 }
 
 export interface CheckIn {

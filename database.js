@@ -386,6 +386,28 @@ export function getDashboardStats() {
   };
 }
 
+export function listCheckIns({ from, to, employeeId, page = 1, pageSize = 20 } = {}) {
+  const conditions = [];
+  const params = [];
+  if (from && /^\d{4}-\d{2}-\d{2}$/.test(from)) { conditions.push('date(check_ins.checked_in_at) >= date(?)'); params.push(from); }
+  if (to && /^\d{4}-\d{2}-\d{2}$/.test(to)) { conditions.push('date(check_ins.checked_in_at) <= date(?)'); params.push(to); }
+  if (Number.isInteger(employeeId) && employeeId > 0) { conditions.push('check_ins.empleado_id = ?'); params.push(employeeId); }
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const total = database.prepare(`SELECT COUNT(*) AS total FROM check_ins ${where}`).get(...params).total;
+  const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+  const safeSize = Math.min(100, Math.max(1, Number.parseInt(pageSize, 10) || 20));
+  const rows = database.prepare(`SELECT check_ins.id, check_ins.checked_in_at, check_ins.similarity, check_ins.detection_probability, empleados.id AS employee_id, empleados.nombre_completo AS display_name, empleados.legajo AS employee_code FROM check_ins JOIN empleados ON empleados.id = check_ins.empleado_id ${where} ORDER BY check_ins.checked_in_at DESC, check_ins.id DESC LIMIT ? OFFSET ?`).all(...params, safeSize, (safePage - 1) * safeSize);
+  return { page: safePage, pageSize: safeSize, total: Number(total), items: rows.map((row) => ({ id: row.id, checkedInAt: row.checked_in_at, similarity: row.similarity, detectionProbability: row.detection_probability, employeeId: row.employee_id, displayName: row.display_name, employeeCode: row.employee_code })) };
+}
+
+export function getDashboardReport(filters = {}) {
+  const base = getDashboardStats();
+  const checkIns = listCheckIns({ ...filters, page: 1, pageSize: 100 });
+  const activeEmployees = new Set(checkIns.items.map((item) => item.employeeId)).size;
+  const lateCheckIns = checkIns.items.filter((item) => new Date(item.checkedInAt).getUTCHours() >= 9).length;
+  return { ...base, report: { firstEntries: activeEmployees, lateCheckIns, activeEmployees, absences: Math.max(0, base.totals.employees - activeEmployees), checkIns: checkIns.total, period: { from: filters.from || null, to: filters.to || null, type: filters.period || 'week' }, chart: base.dailyCheckIns } };
+}
+
 export function closeDatabase() {
   database.close();
 }

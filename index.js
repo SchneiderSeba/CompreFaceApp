@@ -23,12 +23,14 @@ import {
   deleteSession,
   findAdminByUsername,
   getDashboardStats,
+  getDashboardReport,
   getEmployeeBySubject,
   getFaceDiagnostics,
   reassignEmployeeSubject,
   refreshSession,
   getUserBySession,
   listEmployees,
+  listCheckIns,
   updateEmployee,
   verifyPassword,
   databaseDriver
@@ -166,6 +168,36 @@ app.get('/api/employees', requireAdmin, async (_req, res) => {
 
 app.get('/api/admin/dashboard', requireAdmin, async (_req, res) => {
   res.json(await getDashboardStats());
+});
+
+function reportFilters(query = {}) {
+  const employeeId = Number.parseInt(query.employeeId, 10);
+  return {
+    from: typeof query.from === 'string' ? query.from : undefined,
+    to: typeof query.to === 'string' ? query.to : undefined,
+    employeeId: Number.isInteger(employeeId) && employeeId > 0 ? employeeId : undefined,
+    page: query.page,
+    pageSize: query.pageSize,
+    period: ['day', 'week', 'month', 'range'].includes(query.period) ? query.period : 'week'
+  };
+}
+
+app.get('/api/admin/reports', requireAdmin, async (req, res) => {
+  res.json(await getDashboardReport(reportFilters(req.query)));
+});
+
+app.get('/api/admin/check-ins', requireAdmin, async (req, res) => {
+  res.json(await listCheckIns(reportFilters(req.query)));
+});
+
+app.get('/api/admin/reports/daily.csv', requireAdmin, async (req, res) => {
+  const report = await listCheckIns({ ...reportFilters(req.query), page: 1, pageSize: 100 });
+  const escape = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`;
+  const rows = [
+    ['id', 'empleado', 'legajo', 'fecha', 'similitud', 'deteccion'],
+    ...report.items.map((item) => [item.id, item.displayName, item.employeeCode, item.checkedInAt, item.similarity, item.detectionProbability])
+  ];
+  res.type('text/csv').set('Content-Disposition', 'attachment; filename="check-ins.csv"').send(rows.map((row) => row.map(escape).join(',')).join('\n'));
 });
 
 app.patch('/api/employees/:id', requireAdmin, async (req, res) => {
